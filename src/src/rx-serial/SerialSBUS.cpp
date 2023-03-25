@@ -1,6 +1,7 @@
 #include "SerialSBUS.h"
 #include "CRSF.h"
 #include "device.h"
+#include "logging.h"
 
 #define SBUS_FLAG_SIGNAL_LOSS       (1 << 2)
 #define SBUS_FLAG_FAILSAFE_ACTIVE   (1 << 3)
@@ -34,6 +35,21 @@ uint32_t SerialSBUS::sendRCFrameToFC(bool frameAvailable, uint32_t *channelData)
     PackedRCdataOut.ch13 = channelData[13];
     PackedRCdataOut.ch14 = channelData[14];
     PackedRCdataOut.ch15 = channelData[15];
+
+    if (channelData[6] > 1300)
+    {
+        PackedRCdataOut.ch6 = 1696;
+    }
+    else if (channelData[6] > 700)
+    {
+        PackedRCdataOut.ch6 = 1024;
+    }
+    else
+    {
+        PackedRCdataOut.ch6 = 352;
+    }
+    
+    // DBGLN("%d", PackedRCdataOut.ch4);
 
     uint8_t extraData = 0;
     if (!frameAvailable)
