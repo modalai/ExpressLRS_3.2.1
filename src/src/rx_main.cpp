@@ -1208,6 +1208,11 @@ static void setupSerial()
     Serial.begin(serialBaud, config, mode, -1, invert);
 #elif defined(PLATFORM_ESP32)
     uint32_t config = sbusSerialOutput ? SERIAL_8E2 : SERIAL_8N1;
+#if defined(DEBUG_SBUS)
+    serialBaud = 420000;
+    invert = false;
+    config = SERIAL_8N1;
+#endif
     Serial.begin(serialBaud, config, -1, -1, invert);
 #endif
 
