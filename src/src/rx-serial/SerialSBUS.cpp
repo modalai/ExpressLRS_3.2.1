@@ -1,3 +1,5 @@
+#if defined(TARGET_RX)
+
 #include "SerialSBUS.h"
 #include "CRSF.h"
 #include "device.h"
@@ -76,3 +78,5 @@ void SerialSBUS::sendMSPFrameToFC(uint8_t* data)
 {
     // unsupported
 }
+
+#endif
