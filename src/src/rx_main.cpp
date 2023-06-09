@@ -1233,8 +1233,9 @@ void HandleUARTin()
         {
             reset_into_bootloader();
         }
-        if (telemetry.ShouldCallEnterBind())
+        if (telemetry.ShouldCallEnterBind() && connectionState != connected)
         {
+            config.SetIsBound(false);
             EnterBindingMode();
         }
         if (telemetry.ShouldCallUpdateModelMatch())
