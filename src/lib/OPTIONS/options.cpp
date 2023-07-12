@@ -12,7 +12,7 @@ const char commit[] {LATEST_COMMIT, 0};
 #if defined(UNIT_TEST)
 const char version[] = "1.2.3";
 #else
-const char version[] = {"3.2.1"};
+const char version[] = {"3.2.1.1"};
 #endif
 
 #if defined(TARGET_TX)

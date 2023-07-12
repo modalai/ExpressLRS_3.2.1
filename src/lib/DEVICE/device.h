@@ -16,6 +16,8 @@ typedef struct {
     int (*event)();
     // The duration has passed so take appropriate action and return a new duration, this function should never return DURATION_IGNORE
     int (*timeout)();
+    // Function for testing
+    int (*test)(int);
 } device_t;
 
 typedef struct {

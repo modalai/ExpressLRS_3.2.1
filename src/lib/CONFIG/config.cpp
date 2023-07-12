@@ -641,7 +641,8 @@ TxConfig::SetModelId(uint8_t modelId)
 #endif
 
 /////////////////////////////////////////////////////
-
+// #define TARGET_RX
+// #define PLATFORM_STM32
 #if defined(TARGET_RX)
 
 RxConfig::RxConfig()
@@ -859,10 +860,16 @@ RxConfig::SetDefaults(bool commit)
     if (GPIO_PIN_ANT_CTRL != UNDEF_PIN)
         m_config.antennaMode = 2; // 2 is diversity
 
-#if defined(GPIO_PIN_PWM_OUTPUTS)
-    for (unsigned int ch=0; ch<PWM_MAX_CHANNELS; ++ch)
-        SetPwmChannel(ch, 512, ch, false, 0, false);
-    SetPwmChannel(2, 0, 2, false, 0, false); // ch2 is throttle, failsafe it to 988
+#if defined(GPIO_PIN_PWM_OUTPUTS) || defined (PLATFORM_STM32)
+    // for (unsigned int ch=0; ch<PWM_MAX_CHANNELS; ++ch)
+    //     SetPwmChannel(ch, 512, ch, false, 0, false);
+    // SetPwmChannel(2, 0, 2, false, 0, false); // ch2 is throttle, failsafe it to 988
+    SetPwmChannel(0,0,6,false,som50Hz,false);     // Left tri-state switch, failsafe to 900     PA8
+    SetPwmChannel(1,0,7,false,som50Hz,false);     // Right tri-state switch, failsafe to 900    PA11
+    SetPwmChannel(2,0,8,false,som50Hz,false);     // Right bumper button, failsafe to 900       PA2
+    // SetPwmChannel(3,512,7,false,som50Hz,false);
+    // SetPwmChannel(4,512,7,false,som50Hz,false);
+    // SetPwmChannel(5,512,7,false,som50Hz,false);
 #endif
 
     if (commit)
@@ -881,7 +888,7 @@ RxConfig::SetStorageProvider(ELRS_EEPROM *eeprom)
     }
 }
 
-#if defined(GPIO_PIN_PWM_OUTPUTS)
+#if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 void
 RxConfig::SetPwmChannel(uint8_t ch, uint16_t failsafe, uint8_t inputCh, bool inverted, uint8_t mode, bool narrow)
 {

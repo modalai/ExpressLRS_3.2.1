@@ -1,7 +1,12 @@
-#if defined(PLATFORM_ESP32) || defined(PLATFORM_ESP8266)
+#if defined(PLATFORM_ESP32) || defined(PLATFORM_ESP8266) || defined(PLATFORM_STM32)
 #pragma once
 
 #include <Arduino.h>
+#include "stm32f1xx_hal.h"
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+// void Error_Handler(void);
+
 class ServoMgr
 {
 public:

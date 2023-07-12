@@ -1,9 +1,41 @@
-#if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
+// #define PLATFORM_STM32
+#if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32) || defined(PLATFORM_STM32)
 
 #include "ServoMgr.h"
 #include "logging.h"
 #include "waveform_8266.h"
 #include <math.h>
+
+#if defined(PLATFORM_STM32)
+// #include "analog.h"
+#include "variant_R9MM.h"
+#endif
+
+/* Private variables */
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+
+/* Private function prototypes */
+// void SystemClock_Config(void);
+static void GPIO_Init(void);
+static void TIM1_Init(void);
+static void TIM2_Init(void);
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+static void PWM_Error_Handler()
+{
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+//   while (1)
+//   {
+//     /*Write both GREEN and RED LED HIGH to indicate error*/
+//     digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
+//     digitalWrite(GPIO_PIN_LED, HIGH);
+//   }
+}
 
 ServoMgr::ServoMgr(const uint8_t *const pins, const uint8_t outputCnt, uint32_t defaultInterval)
     : _pins(pins), _outputCnt(outputCnt), _refreshInterval(new uint16_t[outputCnt]), _activePwmChannels(0), _resolution_bits(new uint8_t[outputCnt])
@@ -95,13 +127,50 @@ void ServoMgr::allocateLedcChn(uint8_t ch, uint16_t intervalUs, uint8_t pin)
 
 void ServoMgr::initialize()
 {
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    /* Configure the system clock */
+    // SystemClock_Config();
+
+    /* Init GPIOs, TIM1, TIM2*/
+    GPIO_Init();
+    // TIM1_Init();
+    TIM2_Init();
+
+    /* Start PWM on each CH at 900us so LEDs on LED Bar are all off */
     for (uint8_t ch = 0; ch < _outputCnt; ++ch)
     {
         const uint8_t pin = _pins[ch];
         if (pin != PIN_DISCONNECTED)
         {
-            pinMode(pin, OUTPUT);
-            digitalWrite(pin, LOW);
+            if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+            {
+                // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+                // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 900);
+                continue;
+            } 
+            else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+            {
+                // HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+                // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 900);
+                continue;
+            }
+            else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+            {
+                HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+                // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 21600);
+                __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 886U);    // ALL LEDs OFF
+                HAL_Delay(10000);
+                __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 1379U);      // Overt LEDs ON,  IR LEDs OFF
+                HAL_Delay(10000);
+                __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 2068U);   // Overt LEDs OFF, IR LEDs ON
+                HAL_Delay(10000);
+            }
+            else
+            {
+                continue;
+            }
         }
     }
 }
@@ -116,8 +185,26 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
     _activePwmChannels |= (1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcWrite(ch, map(valueUs, 0, _refreshInterval[ch], 0, (1 << _resolution_bits[ch]) - 1));
-#else
+#elif defined(PLATFORM_ESP8266)
     startWaveform8266(pin, valueUs, _refreshInterval[ch] - valueUs);
+#elif defined(PLATFORM_STM32)
+    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    {
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
+        // htim1.Instance->CCR1 = valueUs;
+        ch = ch;
+    } 
+    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    {
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+        // htim1.Instance->CCR4 = valueUs;
+        ch = ch;
+    }
+    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    {
+        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
+        htim2.Instance->CCR3 = valueUs;
+    }
 #endif
 }
 
@@ -131,9 +218,32 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
     _activePwmChannels |= (1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcWrite(ch, map(duty, 0, 1000, 0, (1 << _resolution_bits[ch]) - 1));
-#else
+#elif defined(PLATFORM_ESP8266)
     uint16_t high = map(duty, 0, 1000, 0, _refreshInterval[ch]);
     startWaveform8266(pin, high, _refreshInterval[ch] - high);
+#elif defined(PLATFORM_STM32)
+    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    {
+        // Microseconds from duty cycle -> 0us-2100us
+        // CCR = ARR*(duty/100) 
+        ch = ch;
+        // uint32_t valueUs = htim1.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
+        // htim1.Instance->CCR1 = valueUs;
+    } 
+    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    {
+        ch = ch;
+        // uint32_t valueUs = htim1.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+        // htim1.Instance->CCR4 = valueUs;
+    }
+    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    {
+        uint32_t valueUs = htim2.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
+        htim2.Instance->CCR3 = valueUs;
+    }
 #endif
 }
 
@@ -163,8 +273,24 @@ void ServoMgr::stopPwm(uint8_t ch)
     _activePwmChannels &= ~(1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcDetachPin(pin);
-#else
+#elif defined(PLATFORM_ESP8266)
     stopWaveform8266(pin);
+#elif defined(PLATFORM_STM32)
+    // pwm_stop((PinName)pin);
+    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    {
+        ch = ch;
+        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+    } 
+    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    {
+        ch = ch;
+        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    }
+    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    {
+        HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+    }
 #endif
     digitalWrite(pin, LOW);
 }
@@ -192,6 +318,183 @@ void ServoMgr::writeDigital(uint8_t ch, bool value)
         delay((_refreshInterval[ch] / 1000U) + 1);
     }
     digitalWrite(pin, value);
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void TIM1_Init(void)
+{
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 26;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 2100;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief TIM2 Initialization Function. 
+  *         ARR = 2068 (Max 2100 us period, 32 clock cycle delay so we use 2068)
+  *         900  us HIGH -> 886  us (ARR * DUTY/100)... DUTY is ~42.84% (900/2100)
+  *         1400 us HIGH -> 1379 us (ARR * DUTY/100)... DUTY is ~66.66% (1400/2100)
+  *         2100 us HIGH -> 2068 us (ARR * DUTY/100)... DUTY is 100% (2100/2100)
+  * 
+  * @param None
+  * @retval None
+  */
+static void TIM2_Init(void)
+{
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 72;        // 72MHz APB1 CLK -> 1MHz APB1 CLK
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 2068;         // 2100 us at 1 MHz 
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void GPIO_Init(void)
+{
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+}
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(htim->Instance==TIM1)
+  {
+  /* USER CODE BEGIN TIM1_MspPostInit 0 */
+
+  /* USER CODE END TIM1_MspPostInit 0 */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**TIM1 GPIO Configuration
+    PA8     ------> TIM1_CH1
+    PA11     ------> TIM1_CH4
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN TIM1_MspPostInit 1 */
+
+  /* USER CODE END TIM1_MspPostInit 1 */
+  }
+  else if(htim->Instance==TIM2)
+  {
+  /* USER CODE BEGIN TIM2_MspPostInit 0 */
+
+  /* USER CODE END TIM2_MspPostInit 0 */
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**TIM2 GPIO Configuration
+    PA2     ------> TIM2_CH3
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN TIM2_MspPostInit 1 */
+
+  /* USER CODE END TIM2_MspPostInit 1 */
+  }
+
 }
 
 #endif

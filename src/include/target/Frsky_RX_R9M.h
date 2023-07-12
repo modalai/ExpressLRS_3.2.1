@@ -34,7 +34,7 @@ https://github.com/jaxxzer
     #define GPIO_PIN_RCSIGNAL_RX        PA10
     #define GPIO_PIN_RCSIGNAL_TX        PA9
     #define GPIO_PIN_RCSIGNAL_RX_SBUS   PA3
-    #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2
+    #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2  // Turning this off so we can use pin for PWM
     #ifndef DEVICE_NAME
         #define DEVICE_NAME "FrSky R9MM"
     #endif
@@ -73,22 +73,23 @@ https://github.com/jaxxzer
 
 #define POWER_OUTPUT_FIXED 15 //MAX power for 900 RXes
 // External pads
-// #define R9m_Ch1    PA8
-// #define R9m_Ch2    PA11
+#define R9m_Ch1    PA8
+#define R9m_Ch2    PA11
 // #define R9m_Ch3    PA9
 // #define R9m_Ch4    PA10
 // #define R9m_sbus   PA2
+#define R9m_Ch3   PA2
 // #define R9m_sport  PA5
 // #define R9m_isport PB11
 
 //method to set HSE and clock speed correctly//
 // #if defined(HSE_VALUE)
 // /* Redefine the HSE value; it's equal to 8 MHz on the STM32F4-DISCOVERY Kit */
-//#undef HSE_VALUE
-//#define HSE_VALUE ((uint32_t)16000000).
-//#define HSE_VALUE    25000000U
+// #undef HSE_VALUE
+// #define HSE_VALUE ((uint32_t)16000000).
+// #define HSE_VALUE    25000000U
 // #endif /* HSE_VALUE */
-//#define SYSCLK_FREQ_72MHz
+#define SYSCLK_FREQ_72MHz
 
 
 // Output Power - Default to SX1272 max output
