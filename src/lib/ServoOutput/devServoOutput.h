@@ -1,6 +1,5 @@
 #pragma once
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
-// #if defined(GPIO_PIN_PWM_OUTPUTS) 
 
 #include "ServoMgr.h"
 

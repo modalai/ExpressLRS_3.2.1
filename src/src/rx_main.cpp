@@ -1238,7 +1238,6 @@ void HandleUARTin()
         if (telemetry.ShouldCallEnterBind() && connectionState != connected)
         {
             config.SetIsBound(false);
-            // LED_device.test(2); // Blink RED LED on FrSky R9MM mini twice then HIGH for 1 sec
             EnterBindingMode();
         }
         if (telemetry.ShouldCallUpdateModelMatch())
@@ -1546,24 +1545,13 @@ void setup()
 void loop()
 {
     unsigned long now = millis();
-    // if (hwTimer::running){
-    //     LED_device.test(2);
-    // }else{
-    //     LED_device.test(0);
-    // }
 
     if (MspReceiver.HasFinishedData())
     {
         MspReceiveComplete();
     }
 
-    // if (connectionState == connected){
-    //     LED_device.test(1); // Blink GREEN LED on FrSky R9MM mini twice then HIGH for 2 sec
-    // }
     devicesUpdate(now);
-    // if (connectionState == connected){
-    //     LED_device.test(0); // Blink GREEN LED on FrSky R9MM mini twice then HIGH for 2 sec
-    // }
 
 
 
@@ -1626,13 +1614,7 @@ void loop()
     {
         TelemetrySender.SetDataToTransmit(nextPayload, nextPlayloadSize);
     }
-    // if (connectionState == connected){
-    //     LED_device.test(0); // Blink GREEN LED on FrSky R9MM mini twice then HIGH for 2 sec
-    // }
     updateTelemetryBurst();
-    // if (connectionState == connected){
-    //     LED_device.test(0); // Blink GREEN LED on FrSky R9MM mini twice then HIGH for 2 sec
-    // }
 
     updateBindingMode(now);
     updateSwitchMode();
@@ -1752,7 +1734,6 @@ void ExitBindingMode()
     InLoanBindingMode = false;
     returnModelFromLoan = false;
     DBGLN("Exiting binding mode");
-    // LED_device.test(1); // Write Green LED on FrSky R9MM mini HIGH for 5 sec then LOW for 1 sec
     devicesTriggerEvent();
 }
 

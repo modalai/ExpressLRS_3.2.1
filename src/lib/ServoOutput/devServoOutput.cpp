@@ -1,6 +1,4 @@
-// #define PLATFORM_STM32
-#if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
-// #if defined(GPIO_PIN_PWM_OUTPUTS) 
+#if defined(GPIO_PIN_PWM_OUTPUTS) || defined(FRSKY_R9MM) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
 #include "CRSF.h"
@@ -14,7 +12,6 @@ static ServoMgr *servoMgr;
 static bool newChannelsAvailable;
 // Absolute max failsafe time if no update is received, regardless of LQ
 static constexpr uint32_t FAILSAFE_ABS_TIMEOUT_MS = 1000U;
-extern device_t LED_device;
 
 void ICACHE_RAM_ATTR servoNewChannelsAvaliable()
 {
@@ -70,9 +67,6 @@ static void servosFailsafe()
     constexpr unsigned SERVO_FAILSAFE_MIN = 886U;
     for (unsigned ch = 0; ch < servoMgr->getOutputCnt(); ++ch)
     {
-        if (ch == 2){
-            LED_device.test(0);
-        }
         const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
         // Note: Failsafe values do not respect the inverted flag, failsafes are absolute
         uint16_t us = chConfig->val.failsafe + SERVO_FAILSAFE_MIN;
@@ -108,7 +102,7 @@ static int servosUpdate(unsigned long now)
             {
                 us = 3000U - us;
             }
-            if (us < 1000){
+            if (us < 1050U){
                 servoWrite(ch, SERVO_FAILSAFE_MIN);
             }
             else{
@@ -136,27 +130,34 @@ static void initialize()
     {
         return;
     }
-    #ifdef PLATFORM_STM32
-    #define GPIO_PIN_PWM_OUTPUTS_COUNT 3 
-    uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
-    // #define GPIO_PIN_PWM_OUTPUTS_COUNT 1
-    // uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch3};
-    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
-    #else
-    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
-    #endif
+
+#ifdef FRSKY_R9MM
+        #define GPIO_PIN_PWM_OUTPUTS_COUNT 3 
+        uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
+    
+        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)5,false,som50Hz,false);    // Left tri-state switch,   PA8  InputCh: 6  Ch: 0 
+        config.SetPwmChannel((uint8_t)1,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
+        config.SetPwmChannel((uint8_t)2,(uint16_t)0,(uint8_t)7,false,som50Hz,false);    // Right bumper button,     PA2  InputCh: 8  Ch: 2
+        if (config.IsModified())
+        {
+            config.Commit();
+        }
+    
+        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
+#else
+        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
+#endif
 
     for (unsigned ch = 0; ch < servoMgr->getOutputCnt(); ++ch)
     {
         uint8_t pin = GPIO_PIN_PWM_OUTPUTS[ch];
-// #if (defined(DEBUG_LOG) || defined(DEBUG_RCVR_LINKSTATS)) && (defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32))
-//         // Disconnect the debug UART pins if DEBUG_LOG
-//         if (pin == 1 || pin == 3)
-//         {
-//             pin = servoMgr->PIN_DISCONNECTED;
-//         }
-// #endif
-        LED_device.test(2);
+#if (defined(DEBUG_LOG) || defined(DEBUG_RCVR_LINKSTATS)) && (defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32))
+        // Disconnect the debug UART pins if DEBUG_LOG
+        if (pin == 1 || pin == 3)
+        {
+            pin = servoMgr->PIN_DISCONNECTED;
+        }
+#endif
         SERVO_PINS[ch] = pin;
     }
 

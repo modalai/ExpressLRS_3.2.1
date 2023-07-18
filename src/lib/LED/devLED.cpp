@@ -34,13 +34,6 @@
 #define GPIO_LED_BLUE_INVERTED 0
 #endif
 
-// #ifdef R9m_Ch1
-// #define CH1 R9m_Ch1
-// #endif
-// #ifdef R9m_Ch2
-// #define CH2 R9m_Ch2
-// #endif
-
 extern bool InBindingMode;
 #if defined(TARGET_RX)
 extern bool connectionHasModelMatch;
@@ -142,12 +135,6 @@ static void initialize()
             pinMode(GPIO_PIN_LED, OUTPUT);
             digitalWrite(GPIO_PIN_LED, LOW ^ GPIO_LED_RED_INVERTED);
         }
-        // #ifdef CH1
-        // pinMode(CH1, OUTPUT);
-        // #endif
-        // #ifdef CH2
-        // pinMode(CH2, OUTPUT);
-        // #endif
 
     #endif
 }
@@ -188,22 +175,7 @@ static int event()
     #if defined(TARGET_RX)
         if (InBindingMode && GPIO_PIN_LED != UNDEF_PIN)
         {
-            // #ifdef CH1
-            // #ifdef HAL_TIM_MODULE_ENABLED
-            // digitalWrite(CH1, HIGH);
-            // #else
-            // digitalWrite(CH1, LOW);
-            // #endif
-            // #endif
-            // #ifdef CH2
-            // digitalWrite(CH2, HIGH);
-            // #endif 
-
-            // #ifdef CH1 
-            // return flashLED(GPIO_PIN_LED, GPIO_LED_RED_INVERTED, LEDSEQ_CUSTOM, sizeof(LEDSEQ_CUSTOM));
-            // #else
             return flashLED(GPIO_PIN_LED, GPIO_LED_RED_INVERTED, LEDSEQ_BINDING, sizeof(LEDSEQ_BINDING));
-            // #endif
         }
     #else
         setPowerLEDs();
@@ -340,7 +312,7 @@ static int event()
 static int test(int type=0)
 {   
     if(type == 0){
-        // Blink GREEN LED on FrSky R9MM mini twice then HIGH for 2 sec
+        // Blink Green LED twice 
         digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
         delay(200);
         digitalWrite(GPIO_PIN_LED_GREEN, LOW);
@@ -350,20 +322,23 @@ static int test(int type=0)
         digitalWrite(GPIO_PIN_LED_GREEN, LOW);
         delay(200);
         digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
-        delay(2000);
-        digitalWrite(GPIO_PIN_LED_GREEN, LOW);
-        delay(100);
     }
     else if (type == 1)
     {
         // Write Green LED on FrSky R9MM mini HIGH for 5 sec then LOW for 1 sec
+        // digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
+        // delay(5000);
+        // digitalWrite(GPIO_PIN_LED_GREEN, LOW);
+        // delay(1000);
+
+        // Blink Green LED once
         digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
-        delay(5000);
+        delay(200);
         digitalWrite(GPIO_PIN_LED_GREEN, LOW);
-        delay(1000);
+        delay(200);
     }
     else if (type == 2){
-        // Blink RED LED on FrSky R9MM mini twice then HIGH for 1 sec
+        // Blink RED LED twice then HIGH for 1 sec
         digitalWrite(GPIO_PIN_LED_RED, HIGH);
         delay(100);
         digitalWrite(GPIO_PIN_LED_RED, LOW);
