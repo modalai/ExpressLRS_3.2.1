@@ -55,6 +55,7 @@ public:
     void ResetState();
     bool ShouldCallBootloader();
     bool ShouldCallEnterBind();
+    bool ShouldCallUnbind();
     bool ShouldCallUpdateModelMatch();
     bool ShouldSendDeviceFrame();
     uint8_t GetUpdatedModelMatch() { return modelMatchId; }
@@ -72,6 +73,7 @@ private:
     uint8_t receivedPackages;
     bool callBootloader;
     bool callEnterBind;
+    bool callUnbind;
     bool callUpdateModelMatch;
     bool sendDeviceFrame;
     uint8_t modelMatchId;

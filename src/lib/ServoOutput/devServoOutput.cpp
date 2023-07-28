@@ -12,6 +12,7 @@ static ServoMgr *servoMgr;
 static bool newChannelsAvailable;
 // Absolute max failsafe time if no update is received, regardless of LQ
 static constexpr uint32_t FAILSAFE_ABS_TIMEOUT_MS = 1000U;
+extern bool InForceUnbindMode;
 
 void ICACHE_RAM_ATTR servoNewChannelsAvaliable()
 {
@@ -155,7 +156,12 @@ static int start()
 }
 
 static int event()
-{
+{   
+    if (InForceUnbindMode){
+        servosFailsafe();
+        return DURATION_NEVER;
+    }
+
     if (servoMgr == nullptr || connectionState == disconnected)
     {
         // Disconnected should come after failsafe on the RX

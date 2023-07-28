@@ -307,11 +307,58 @@ static int event()
     }
 }
 
+static int test(int type = 0){
+        if(type == 0){
+        // Blink LED twice 
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(1000);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(1000);
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(1000);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(1000);
+        digitalWrite(GPIO_PIN_LED, HIGH);
+    }
+    else if (type == 1)
+    {
+        // Write LED HIGH for 5 sec then LOW for 1 sec
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(5000);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(1000);
+
+        // Blink LED once
+        // digitalWrite(GPIO_PIN_LED, HIGH);
+        // delay(200);
+        // digitalWrite(GPIO_PIN_LED, LOW);
+        // delay(200);
+    }
+    else if (type == 2){
+        // Blink LED twice then HIGH for 5 sec
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(100);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(100);
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(100);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(100);
+        digitalWrite(GPIO_PIN_LED, HIGH);
+        delay(5000);
+        digitalWrite(GPIO_PIN_LED, LOW);
+        delay(100);
+
+    }
+    return 0;
+}
+
 device_t LED_device = {
     .initialize = initialize,
     .start = event,
     .event = event,
-    .timeout = timeout
+    .timeout = timeout,
+    .test = test,
 };
 
 #endif

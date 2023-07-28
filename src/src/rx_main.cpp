@@ -192,6 +192,7 @@ static uint8_t debugRcvrLinkstatsFhssIdx;
 
 bool InBindingMode = false;
 bool InLoanBindingMode = false;
+bool InForceUnbindMode = false;
 bool returnModelFromLoan = false;
 static unsigned long loanBindTimeout = LOAN_BIND_TIMEOUT_DEFAULT;
 static unsigned long loadBindingStartedMs = 0;
@@ -1238,6 +1239,14 @@ void HandleUARTin()
             config.SetIsBound(false);
             EnterBindingMode();
         }
+        if (telemetry.ShouldCallUnbind())
+        {
+            InForceUnbindMode = true;
+            config.SetIsBound(false);
+            LostConnection(true);
+            memcpy(UID, MasterUID, sizeof(UID));
+            devicesTriggerEvent();
+        }
         if (telemetry.ShouldCallUpdateModelMatch())
         {
             UpdateModelMatch(telemetry.GetUpdatedModelMatch());
@@ -1328,7 +1337,7 @@ static void updateBindingMode(unsigned long now)
 #ifndef MY_UID
     // If the eeprom is indicating that we're not bound
     // and we're not already in binding mode, enter binding
-    if (!config.GetIsBound() && !InBindingMode)
+    if (!config.GetIsBound() && !InBindingMode && connectionState != disconnected)
     {
         INFOLN("RX has not been bound, enter binding mode...");
         EnterBindingMode();
@@ -1654,6 +1663,9 @@ void reset_into_bootloader(void)
 
 void EnterBindingMode()
 {
+    if(InForceUnbindMode){
+        InForceUnbindMode = false;
+    }
     if (InLoanBindingMode)
     {
         loadBindingStartedMs = millis();
