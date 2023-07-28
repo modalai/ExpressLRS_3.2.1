@@ -13,7 +13,7 @@ extern device_t ServoOut_device;
 #define OPT_HAS_SERVO_OUTPUT (GPIO_PIN_PWM_OUTPUTS_COUNT > 0)
 #endif
 
-#if defined(PLATFORM_STM32)
+#if defined(PLATFORM_STM32) || defined(FRSKY_R9MM)
 #define OPT_HAS_SERVO_OUTPUT 1
 #endif
 

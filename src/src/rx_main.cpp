@@ -194,6 +194,7 @@ static uint8_t debugRcvrLinkstatsFhssIdx;
 
 bool InBindingMode = false;
 bool InLoanBindingMode = false;
+bool InForceUnbindMode = false;
 bool returnModelFromLoan = false;
 static unsigned long loanBindTimeout = LOAN_BIND_TIMEOUT_DEFAULT;
 static unsigned long loadBindingStartedMs = 0;
@@ -1237,8 +1238,17 @@ void HandleUARTin()
         }
         if (telemetry.ShouldCallEnterBind() && connectionState != connected)
         {
+            InForceUnbindMode = false;
             config.SetIsBound(false);
             EnterBindingMode();
+        }
+        if (telemetry.ShouldCallUnbind())
+        {
+            InForceUnbindMode = true;
+            config.SetIsBound(false);
+            LostConnection(true);
+            memcpy(UID, MasterUID, sizeof(UID));
+            devicesTriggerEvent();
         }
         if (telemetry.ShouldCallUpdateModelMatch())
         {
@@ -1330,7 +1340,7 @@ static void updateBindingMode(unsigned long now)
 #ifndef MY_UID
     // If the eeprom is indicating that we're not bound
     // and we're not already in binding mode, enter binding
-    if (!config.GetIsBound() && !InBindingMode)
+    if (!config.GetIsBound() && !InBindingMode && !InForceUnbindMode)
     {
         INFOLN("RX has not been bound, enter binding mode...");
         EnterBindingMode();
@@ -1483,6 +1493,10 @@ void resetConfigAndReboot()
 
 void setup()
 {
+    #ifdef FRSKY_R9MM 
+    __enable_irq();
+    #endif
+
     #if defined(TARGET_UNIFIED_RX)
     hardwareConfigured = options_init();
     if (!hardwareConfigured)
@@ -1615,7 +1629,6 @@ void loop()
         TelemetrySender.SetDataToTransmit(nextPayload, nextPlayloadSize);
     }
     updateTelemetryBurst();
-
     updateBindingMode(now);
     updateSwitchMode();
     checkGeminiMode();
@@ -1659,6 +1672,7 @@ void reset_into_bootloader(void)
 
 void EnterBindingMode()
 {
+    InForceUnbindMode = false;
     if (InLoanBindingMode)
     {
         loadBindingStartedMs = millis();

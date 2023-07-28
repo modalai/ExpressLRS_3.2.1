@@ -34,7 +34,7 @@ https://github.com/jaxxzer
     #define GPIO_PIN_RCSIGNAL_RX        PA10
     #define GPIO_PIN_RCSIGNAL_TX        PA9
     #define GPIO_PIN_RCSIGNAL_RX_SBUS   PA3
-    #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2  // Turning this off so we can use pin for PWM
+    // #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2  // Turning this off so we can use pin for PWM
     #ifndef DEVICE_NAME
         #define DEVICE_NAME "FrSky R9MM"
     #endif
@@ -75,10 +75,10 @@ https://github.com/jaxxzer
 // External pads
 #define R9m_Ch1    PA8
 #define R9m_Ch2    PA11
+#define R9m_Ch3    PA2
 // #define R9m_Ch3    PA9
 // #define R9m_Ch4    PA10
 // #define R9m_sbus   PA2
-#define R9m_Ch3   PA2
 // #define R9m_sport  PA5
 // #define R9m_isport PB11
 
