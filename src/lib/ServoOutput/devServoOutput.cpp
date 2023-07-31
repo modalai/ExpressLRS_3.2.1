@@ -106,6 +106,9 @@ static int servosUpdate(unsigned long now)
             if (us < 1050U){
                 servoWrite(ch, SERVO_FAILSAFE_MIN);
             }
+            else if (us > 1500 && us < 1600){
+                servoWrite(ch, 1450);
+            }
             else{
                 servoWrite(ch, us);
             }
@@ -133,17 +136,17 @@ static void initialize()
     }
 
 #ifdef FRSKY_R9MM
-        #define GPIO_PIN_PWM_OUTPUTS_COUNT 3 
-        uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
+        // #define GPIO_PIN_PWM_OUTPUTS_COUNT 3 
+        // uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
     
-        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)5,false,som50Hz,false);    // Left tri-state switch,   PA8  InputCh: 6  Ch: 0 
-        config.SetPwmChannel((uint8_t)1,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
-        config.SetPwmChannel((uint8_t)2,(uint16_t)0,(uint8_t)7,false,som50Hz,false);    // Right bumper button,     PA2  InputCh: 8  Ch: 2
-        if (config.IsModified())
-        {
-            config.Commit();
-        }
-    
+        #define GPIO_PIN_PWM_OUTPUTS_COUNT 1
+        uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch2};
+
+        // config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)5,false,som50Hz,false);    // Left tri-state switch,   PA8  InputCh: 6  Ch: 0 
+        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
+        // config.SetPwmChannel((uint8_t)2,(uint16_t)0,(uint8_t)7,false,som50Hz,false);    // Right bumper button,     PA2  InputCh: 8  Ch: 2
+        config.Commit();
+
         servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
 #else
         servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);

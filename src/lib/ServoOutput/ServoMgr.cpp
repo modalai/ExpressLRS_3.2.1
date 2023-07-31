@@ -136,24 +136,27 @@ void ServoMgr::initialize()
         const uint8_t pin = _pins[ch];
         if (pin != PIN_DISCONNECTED)
         {
-            if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-            {
-                HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-                HAL_Delay(10);
-                __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0U);  // ALL LEDs OFF
-            } 
-            else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-            {
-                HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-                HAL_Delay(10);
-                __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
-            }
-            else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-            {
-                HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-                HAL_Delay(10);
-                __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0U);  // ALL LEDs OFF
-            }
+            HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+            HAL_Delay(10);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
+            // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+            // {
+            //     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+            //     HAL_Delay(10);
+            //     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0U);  // ALL LEDs OFF
+            // } 
+            // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+            // {
+            //     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+            //     HAL_Delay(10);
+            //     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
+            // }
+            // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+            // {
+            //     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+            //     HAL_Delay(10);
+            //     __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0U);  // ALL LEDs OFF
+            // }
         }
     }
 #elif defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
@@ -183,18 +186,19 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 #elif defined(PLATFORM_ESP8266)
     startWaveform8266(pin, valueUs, _refreshInterval[ch] - valueUs);
 #elif defined(FRSKY_R9MM)
-    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    {
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
-    } 
-    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    {
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
-    }
-    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    {
-        __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
-    }
+    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    // {
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
+    // } 
+    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    // {
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+    // }
+    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    // {
+        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
+    // }
 #endif
 }
 
@@ -212,21 +216,24 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
     uint16_t high = map(duty, 0, 1000, 0, _refreshInterval[ch]);
     startWaveform8266(pin, high, _refreshInterval[ch] - high);
 #elif defined(FRSKY_R9MM)
-    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    {
-        uint32_t valueUs = htim1.Init.Period * (duty/100);
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
-    } 
-    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    {
-        uint32_t valueUs = htim1.Init.Period * (duty/100);
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
-    }
-    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    {
-        uint32_t valueUs = htim2.Init.Period * (duty/100);
-        __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
-    }
+    uint32_t valueUs = htim1.Init.Period * (duty/100);
+    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+
+    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    // {
+        // uint32_t valueUs = htim1.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
+    // } 
+    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    // {
+        // uint32_t valueUs = htim1.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+    // }
+    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    // {
+        // uint32_t valueUs = htim2.Init.Period * (duty/100);
+        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
+    // }
 #endif
 }
 
@@ -259,18 +266,19 @@ void ServoMgr::stopPwm(uint8_t ch)
 #elif defined(PLATFORM_ESP8266)
     stopWaveform8266(pin);
 #elif defined(FRSKY_R9MM)
-    if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    {
-        HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
-    } 
-    else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    {
-        HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
-    }
-    else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    {
-        HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
-    }
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
+    // {
+        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+    // } 
+    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
+    // {
+        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    // }
+    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
+    // {
+        // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+    // }
 #endif
     digitalWrite(pin, LOW);
 }
