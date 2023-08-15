@@ -41,6 +41,13 @@ bool Telemetry::ShouldCallUnbind()
     return enterUnbind;
 }
 
+bool Telemetry::ShouldCallUpdatePWM()
+{
+    bool updatePWM = callUpdatePWM;
+    callUpdatePWM = false;
+    return updatePWM;
+}
+
 bool Telemetry::ShouldCallUpdateModelMatch()
 {
     bool updateModelMatch = callUpdateModelMatch;
@@ -220,6 +227,14 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
     {
         callUpdateModelMatch = true;
         modelMatchId = package[5];
+        return true;
+    }
+    if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == 'p' && package[4] == 'w' && package[5] == 'm')
+    {
+        callUpdatePWM = true;
+        pwmChannel = package[6];
+        pwmType = package[7];
+        pwmValue = package[8] << 8 | package[9];
         return true;
     }
     if (header->type == CRSF_FRAMETYPE_DEVICE_PING && package[CRSF_TELEMETRY_TYPE_INDEX + 1] == CRSF_ADDRESS_CRSF_RECEIVER)

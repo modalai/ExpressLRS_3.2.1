@@ -1,3 +1,4 @@
+// #define PLATFORM_STM32
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
@@ -13,6 +14,10 @@ static bool newChannelsAvailable;
 // Absolute max failsafe time if no update is received, regardless of LQ
 static constexpr uint32_t FAILSAFE_ABS_TIMEOUT_MS = 1000U;
 extern bool InForceUnbindMode;
+extern bool updatePWM;
+extern uint8_t pwmChannel;
+extern uint8_t pwmType;
+extern uint16_t pwmValue; 
 
 void ICACHE_RAM_ATTR servoNewChannelsAvaliable()
 {
@@ -185,6 +190,16 @@ static int event()
     if (InForceUnbindMode){
         servosFailsafe();
         return DURATION_NEVER;
+    }
+
+    if (updatePWM){
+        if (pwmType == 'u'){
+            servoMgr->writeMicroseconds(pwmChannel, pwmValue);
+        }
+        else if (pwmType == 'd'){
+            servoMgr->writeDuty(pwmChannel, pwmValue);
+        }
+        updatePWM = false;
     }
 
     if (servoMgr == nullptr || connectionState == disconnected)

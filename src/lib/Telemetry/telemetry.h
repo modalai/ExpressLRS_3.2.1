@@ -57,9 +57,13 @@ public:
     bool ShouldCallEnterBind();
     bool ShouldCallUnbind();
     bool ShouldCallUpdateModelMatch();
+    bool ShouldCallUpdatePWM();
     bool ShouldSendDeviceFrame();
     uint8_t GetUpdatedModelMatch() { return modelMatchId; }
     bool GetNextPayload(uint8_t* nextPayloadSize, uint8_t **payloadData);
+    uint8_t GetPwmType(){ return pwmType;}
+    uint8_t GetPwmChannel(){ return pwmChannel;}
+    uint16_t GetPwmValue(){ return pwmValue;}
     uint8_t UpdatedPayloadCount();
     uint8_t ReceivedPackagesCount();
     bool AppendTelemetryPackage(uint8_t *package);
@@ -71,10 +75,14 @@ private:
     uint8_t currentPayloadIndex;
     volatile crsf_telemetry_package_t *telemetryPackageHead;
     uint8_t receivedPackages;
+    uint8_t pwmType;
+    uint8_t pwmChannel;
+    uint16_t pwmValue;
     bool callBootloader;
     bool callEnterBind;
     bool callUnbind;
     bool callUpdateModelMatch;
+    bool callUpdatePWM;
     bool sendDeviceFrame;
     uint8_t modelMatchId;
 };

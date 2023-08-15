@@ -195,6 +195,10 @@ static uint8_t debugRcvrLinkstatsFhssIdx;
 bool InBindingMode = false;
 bool InLoanBindingMode = false;
 bool InForceUnbindMode = false;
+bool updatePWM = false;
+uint8_t pwmChannel{0};
+uint8_t pwmType{0}; 
+uint16_t pwmValue{0};
 bool returnModelFromLoan = false;
 static unsigned long loanBindTimeout = LOAN_BIND_TIMEOUT_DEFAULT;
 static unsigned long loadBindingStartedMs = 0;
@@ -1260,6 +1264,19 @@ void HandleUARTin()
             crsf.GetDeviceInformation(deviceInformation, 0);
             crsf.SetExtendedHeaderAndCrc(deviceInformation, CRSF_FRAMETYPE_DEVICE_INFO, DEVICE_INFORMATION_FRAME_SIZE, CRSF_ADDRESS_CRSF_RECEIVER, CRSF_ADDRESS_FLIGHT_CONTROLLER);
             crsf.sendMSPFrameToFC(deviceInformation);
+        }
+        if (telemetry.ShouldCallUpdatePWM()){
+            updatePWM = true;
+            pwmChannel = telemetry.GetPwmChannel();
+            pwmType = telemetry.GetPwmType();
+            pwmValue = telemetry.GetPwmValue();
+
+            if (pwmType == 'u'){
+                ServoOut_device.event();
+            }
+            else if (pwmType == 'd'){
+                ServoOut_device.event();
+            }
         }
     }
 }

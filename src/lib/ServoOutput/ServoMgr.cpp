@@ -216,8 +216,8 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
     uint16_t high = map(duty, 0, 1000, 0, _refreshInterval[ch]);
     startWaveform8266(pin, high, _refreshInterval[ch] - high);
 #elif defined(FRSKY_R9MM)
-    uint32_t valueUs = htim1.Init.Period * (duty/100);
-    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
+    uint16_t valueUs = map(duty, 0, 100, 0, htim1.Init.Period);
+    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4,valueUs);
 
     // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
     // {
