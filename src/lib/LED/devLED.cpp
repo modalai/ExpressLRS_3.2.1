@@ -326,16 +326,23 @@ static int test(int type=0)
     else if (type == 1)
     {
         // Write Green LED on FrSky R9MM mini HIGH for 5 sec then LOW for 1 sec
-        digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
-        delay(5000);
-        digitalWrite(GPIO_PIN_LED_GREEN, LOW);
-        delay(1000);
+        // digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
+        // delay(5000);
+        // digitalWrite(GPIO_PIN_LED_GREEN, LOW);
+        // delay(1000);
 
         // Blink Green LED once
         // digitalWrite(GPIO_PIN_LED_GREEN, HIGH);
         // delay(200);
         // digitalWrite(GPIO_PIN_LED_GREEN, LOW);
         // delay(200);
+
+        // Write Red LED on FrSky R9MM mini HIGH for 5 sec then LOW for 1 sec
+        digitalWrite(GPIO_PIN_LED_RED, HIGH);
+        delay(5000);
+        digitalWrite(GPIO_PIN_LED_RED, LOW);
+        delay(1000);
+
     }
     else if (type == 2){
         // Blink RED LED twice then HIGH for 1 sec

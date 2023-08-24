@@ -1,3 +1,5 @@
+// #define PLATFORM_STM32
+// #define FRSKY_R9MM
 #if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32) || defined(FRSKY_R9MM) || defined(PLATFORM_STM32)
 
 #include "ServoMgr.h"
@@ -139,24 +141,6 @@ void ServoMgr::initialize()
             HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
             HAL_Delay(10);
             __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
-            // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-            // {
-            //     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-            //     HAL_Delay(10);
-            //     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0U);  // ALL LEDs OFF
-            // } 
-            // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-            // {
-            //     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-            //     HAL_Delay(10);
-            //     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
-            // }
-            // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-            // {
-            //     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-            //     HAL_Delay(10);
-            //     __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0U);  // ALL LEDs OFF
-            // }
         }
     }
 #elif defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
@@ -186,19 +170,16 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 #elif defined(PLATFORM_ESP8266)
     startWaveform8266(pin, valueUs, _refreshInterval[ch] - valueUs);
 #elif defined(FRSKY_R9MM)
-    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
-    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    // {
-        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
-    // } 
-    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    // {
-        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
-    // }
-    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    // {
-        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
-    // }
+    if (ch == 0){
+        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+    } else if (ch == 1){
+        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+    } else if (ch == 2){
+        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim2.Init.Period);
+        __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+    }
 #endif
 }
 
@@ -218,22 +199,6 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
 #elif defined(FRSKY_R9MM)
     uint16_t valueUs = map(duty, 0, 100, 0, htim1.Init.Period);
     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4,valueUs);
-
-    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    // {
-        // uint32_t valueUs = htim1.Init.Period * (duty/100);
-        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, valueUs);
-    // } 
-    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    // {
-        // uint32_t valueUs = htim1.Init.Period * (duty/100);
-        // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, valueUs);
-    // }
-    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    // {
-        // uint32_t valueUs = htim2.Init.Period * (duty/100);
-        // __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, valueUs);
-    // }
 #endif
 }
 
@@ -266,19 +231,8 @@ void ServoMgr::stopPwm(uint8_t ch)
 #elif defined(PLATFORM_ESP8266)
     stopWaveform8266(pin);
 #elif defined(FRSKY_R9MM)
+    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, (uint16_t)900);
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
-    // if (ch == 0)        // R9m_Ch1 -> PA8 -> TIM1_CH1
-    // {
-        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
-    // } 
-    // else if (ch == 1)   // R9m_Ch2 -> PA11 -> TIM1_CH4
-    // {
-        // HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
-    // }
-    // else if (ch == 2)   // R9m_Ch3 -> PA2 -> TIM2_CH3
-    // {
-        // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
-    // }
 #endif
     digitalWrite(pin, LOW);
 }
@@ -383,7 +337,7 @@ static void TIM1_Init(void)
 
 /**
   * @brief TIM2 Initialization Function. 
-  *         ARR = 2068 (Max 2100 us period, 32 clock cycle delay so we use 2068)
+  *         ARR = 2068 (Max 2100 us period, some delay so we use 2068)
   *         900  us HIGH -> 886  us (ARR * DUTY/100)... DUTY is ~42.84% (900/2100)
   *         1400 us HIGH -> 1379 us (ARR * DUTY/100)... DUTY is ~66.66% (1400/2100)
   *         2100 us HIGH -> 2068 us (ARR * DUTY/100)... DUTY is 100% (2100/2100)

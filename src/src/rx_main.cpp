@@ -196,7 +196,10 @@ bool InBindingMode = false;
 bool InLoanBindingMode = false;
 bool InForceUnbindMode = false;
 bool updatePWM = false;
+uint8_t pwmPin{0};
+uint8_t pwmCmd{0};
 uint8_t pwmChannel{0};
+uint8_t pwmInputChannel{0};
 uint8_t pwmType{0}; 
 uint16_t pwmValue{0};
 bool returnModelFromLoan = false;
@@ -1266,17 +1269,15 @@ void HandleUARTin()
             crsf.sendMSPFrameToFC(deviceInformation);
         }
         if (telemetry.ShouldCallUpdatePWM()){
+            // LED_device.test(1);
             updatePWM = true;
+            pwmPin = telemetry.GetPwmPin();
+            pwmCmd = telemetry.GetPwmCmd();
             pwmChannel = telemetry.GetPwmChannel();
+            pwmInputChannel = telemetry.GetPwmInputChannel();
             pwmType = telemetry.GetPwmType();
             pwmValue = telemetry.GetPwmValue();
-
-            if (pwmType == 'u'){
-                ServoOut_device.event();
-            }
-            else if (pwmType == 'd'){
-                ServoOut_device.event();
-            }
+            ServoOut_device.event();
         }
     }
 }

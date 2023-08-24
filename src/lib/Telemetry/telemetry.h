@@ -10,6 +10,13 @@ enum CustomTelemSubTypeID : uint8_t {
     CRSF_AP_CUSTOM_TELEM_MULTI_PACKET_PASSTHROUGH = 0xF2,
 };
 
+
+enum PWM : uint8_t {
+    SET_PWM_CH = 0xF3,
+    SET_PWM_VAL = 0xF4,
+    SET_PWM_DEFAULT = 0xFF
+};
+
 typedef enum {
     TELEMETRY_IDLE = 0,
     RECEIVING_LENGTH,
@@ -61,8 +68,11 @@ public:
     bool ShouldSendDeviceFrame();
     uint8_t GetUpdatedModelMatch() { return modelMatchId; }
     bool GetNextPayload(uint8_t* nextPayloadSize, uint8_t **payloadData);
+    uint8_t GetPwmCmd(){ return pwmCmd;}
+    uint8_t GetPwmPin(){ return pwmPin;}
     uint8_t GetPwmType(){ return pwmType;}
     uint8_t GetPwmChannel(){ return pwmChannel;}
+    uint8_t GetPwmInputChannel(){ return pwmInputChannel;}
     uint16_t GetPwmValue(){ return pwmValue;}
     uint8_t UpdatedPayloadCount();
     uint8_t ReceivedPackagesCount();
@@ -75,8 +85,11 @@ private:
     uint8_t currentPayloadIndex;
     volatile crsf_telemetry_package_t *telemetryPackageHead;
     uint8_t receivedPackages;
+    uint8_t pwmCmd;
+    uint8_t pwmPin;
     uint8_t pwmType;
     uint8_t pwmChannel;
+    uint16_t pwmInputChannel;
     uint16_t pwmValue;
     bool callBootloader;
     bool callEnterBind;

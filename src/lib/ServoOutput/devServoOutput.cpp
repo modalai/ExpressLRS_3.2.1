@@ -1,11 +1,28 @@
 // #define PLATFORM_STM32
+// #define FRSKY_R9MM
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
+#include "telemetry.h"
 #include "CRSF.h"
 #include "config.h"
 #include "helpers.h"
 #include "rxtx_intf.h"
+
+#ifdef FRSKY_R9MM
+#define GPIO_PIN_PWM_OUTPUTS_COUNT 3
+extern bool updatePWM;
+extern uint8_t pwmPin;
+extern uint8_t pwmCmd;
+extern uint8_t pwmChannel;
+extern uint8_t pwmInputChannel;
+extern uint8_t pwmType;
+extern uint16_t pwmValue; 
+extern device_t LED_device; 
+static uint8_t INPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT];
+// static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT];
+static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
+#endif // End FRSKY_R9MM
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
@@ -14,10 +31,7 @@ static bool newChannelsAvailable;
 // Absolute max failsafe time if no update is received, regardless of LQ
 static constexpr uint32_t FAILSAFE_ABS_TIMEOUT_MS = 1000U;
 extern bool InForceUnbindMode;
-extern bool updatePWM;
-extern uint8_t pwmChannel;
-extern uint8_t pwmType;
-extern uint16_t pwmValue; 
+
 
 void ICACHE_RAM_ATTR servoNewChannelsAvaliable()
 {
@@ -141,18 +155,10 @@ static void initialize()
     }
 
 #ifdef FRSKY_R9MM
-        // #define GPIO_PIN_PWM_OUTPUTS_COUNT 3 
-        // uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
-    
-        #define GPIO_PIN_PWM_OUTPUTS_COUNT 1
-        uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch2};
-
-        // config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)5,false,som50Hz,false);    // Left tri-state switch,   PA8  InputCh: 6  Ch: 0 
-        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
-        // config.SetPwmChannel((uint8_t)2,(uint16_t)0,(uint8_t)7,false,som50Hz,false);    // Right bumper button,     PA2  InputCh: 8  Ch: 2
+        INPUT_CHANNELS[0] = 7; // Right tri-state switch,  PA11 InputCh: 7  Ch: 0
+        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    
         config.Commit();
-
-        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
+        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT - 2, 20000U);
 #else
         servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
 #endif
@@ -174,6 +180,40 @@ static void initialize()
     servoMgr->initialize();
 }
 
+#ifdef FRSKY_R9MM
+static void updatePwmChannels(uint8_t inputChannel, uint8_t pwmChannel, uint8_t outputPin)
+{
+    if (!OPT_HAS_SERVO_OUTPUT)
+    {
+        return;
+    }
+
+    // Get info on current config:
+    //      - Input channels stored in INPUT_CHANNELS
+    //      - Output channels stored in OUTPUT_CHANNELS and also servoMgr 
+    //      - Output pins stored in SERVO_PINS 
+
+    // Update configuration
+    // uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {0};
+    INPUT_CHANNELS[pwmChannel] = inputChannel;             //  [OutputCh] = InputCh
+    SERVO_PINS[pwmChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];        //  [OutputCh] = OutputPin
+
+    // Delete old servoMgr
+    delete servoMgr;
+
+    // Set new pwm configuration
+    for (uint8_t gpio = 0; gpio < GPIO_PIN_PWM_OUTPUTS_COUNT; gpio++){
+        config.SetPwmChannel(gpio,(uint16_t)0, INPUT_CHANNELS[gpio] - 1, false, som50Hz, false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
+    }
+    config.Commit();
+
+    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
+
+    // Initialize all servos to low ASAP
+    servoMgr->initialize();
+}
+#endif // End FRSKY_R9MM
+
 static int start()
 {
     for (unsigned ch = 0; servoMgr && ch < servoMgr->getOutputCnt(); ++ch)
@@ -192,15 +232,27 @@ static int event()
         return DURATION_NEVER;
     }
 
-    if (updatePWM){
-        if (pwmType == 'u'){
+#ifdef FRSKY_R9MM
+    if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_VAL){
+        updatePWM = false;
+        if (pwmType == 's'){
             servoMgr->writeMicroseconds(pwmChannel, pwmValue);
         }
         else if (pwmType == 'd'){
             servoMgr->writeDuty(pwmChannel, pwmValue);
         }
+    } else if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_CH){
         updatePWM = false;
+        // If channel is active then we should stop it first
+        if (servoMgr->isPwmActive(pwmChannel)){
+            servoMgr->stopPwm(pwmChannel);
+        }
+        updatePwmChannels(pwmInputChannel, pwmChannel, pwmPin);
+    } else{
+        LED_device.test(1);
     }
+
+#endif // End FRSKY_R9MM
 
     if (servoMgr == nullptr || connectionState == disconnected)
     {

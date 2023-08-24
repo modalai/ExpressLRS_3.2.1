@@ -11,7 +11,7 @@ class ServoMgr
 {
 public:
     ServoMgr(const uint8_t *const pins, const uint8_t outputCnt, uint32_t defaultInterval = 20000U);
-    ~ServoMgr() { delete[] _refreshInterval; }
+    ~ServoMgr() {stopAllPwm(); delete[] _refreshInterval; }
 
     // Initialize the pins for output
     void initialize();

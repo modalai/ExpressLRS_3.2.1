@@ -14,6 +14,7 @@ using namespace std;
 #endif
 
 #if CRSF_RX_MODULE
+extern device_t LED_device;
 
 Telemetry::Telemetry()
 {
@@ -208,6 +209,9 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
 {
     const crsf_header_t *header = (crsf_header_t *) package;
 
+    if (package[3] == PWM::SET_PWM_CH){
+        LED_device.test(0);
+    }
     if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == 'b' && package[4] == 'l')
     {
         callBootloader = true;
@@ -229,12 +233,23 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
         modelMatchId = package[5];
         return true;
     }
-    if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == 'p' && package[4] == 'w' && package[5] == 'm')
+    if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == PWM::SET_PWM_CH)
+    {
+        LED_device.test(2);
+        callUpdatePWM = true;
+        pwmPin = package[6]-1;
+        pwmCmd = package[3];
+        pwmChannel = package[4]-1;
+        pwmInputChannel = package[5]-1;
+        return true;
+    }
+    if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == PWM::SET_PWM_VAL)
     {
         callUpdatePWM = true;
-        pwmChannel = package[6];
-        pwmType = package[7];
-        pwmValue = package[8] << 8 | package[9];
+        pwmCmd = package[3];
+        pwmChannel = package[4]-1;
+        pwmType = package[5];
+        pwmValue = package[6] << 8 | package[7];
         return true;
     }
     if (header->type == CRSF_FRAMETYPE_DEVICE_PING && package[CRSF_TELEMETRY_TYPE_INDEX + 1] == CRSF_ADDRESS_CRSF_RECEIVER)
