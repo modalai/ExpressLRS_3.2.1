@@ -20,7 +20,6 @@ extern uint8_t pwmType;
 extern uint16_t pwmValue; 
 extern device_t LED_device; 
 static uint8_t INPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT];
-// static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT];
 static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
 #endif // End FRSKY_R9MM
 
@@ -155,14 +154,19 @@ static void initialize()
     }
 
 #ifdef FRSKY_R9MM
-        INPUT_CHANNELS[0] = 7; // Right tri-state switch,  PA11 InputCh: 7  Ch: 0
-        config.SetPwmChannel((uint8_t)0,(uint16_t)0,(uint8_t)6,false,som50Hz,false);    
+        INPUT_CHANNELS[0] = {7}; 
+        INPUT_CHANNELS[1] = {16}; 
+        INPUT_CHANNELS[2] = {16}; 
+        config.SetPwmChannel((uint8_t)0,(uint16_t)0,INPUT_CHANNELS[0]-1,false,som50Hz,false);    // PA11 OutputCh: 0  InputCh: 7
+        config.SetPwmChannel((uint8_t)1,(uint16_t)0,INPUT_CHANNELS[1]-1,false,som50Hz,false);    // PA8  OutputCh: 1  InputCh: 16
+        config.SetPwmChannel((uint8_t)2,(uint16_t)0,INPUT_CHANNELS[2]-1,false,som50Hz,false);    // PA2  OutputCh: 2  InputCh: 16
         config.Commit();
-        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT - 2, 20000U);
+        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
 #else
         servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
 #endif
 
+    // Assign each output channel to a output pin
     for (unsigned ch = 0; ch < servoMgr->getOutputCnt(); ++ch)
     {
         uint8_t pin = GPIO_PIN_PWM_OUTPUTS[ch];
@@ -181,7 +185,7 @@ static void initialize()
 }
 
 #ifdef FRSKY_R9MM
-static void updatePwmChannels(uint8_t inputChannel, uint8_t pwmChannel, uint8_t outputPin)
+static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8_t outputPin)
 {
     if (!OPT_HAS_SERVO_OUTPUT)
     {
@@ -193,17 +197,37 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t pwmChannel, uint8_t 
     //      - Output channels stored in OUTPUT_CHANNELS and also servoMgr 
     //      - Output pins stored in SERVO_PINS 
 
-    // Update configuration
-    // uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {0};
-    INPUT_CHANNELS[pwmChannel] = inputChannel;             //  [OutputCh] = InputCh
-    SERVO_PINS[pwmChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];        //  [OutputCh] = OutputPin
+    // Update input channel to output channel configuration
+    // INPUT_CHANNELS[3] -> each index represents an output channel and each element represents an input Channel
+    // Make sure that we clear redundant input to output channel configuration
+    for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        // If new input channel is already being used, reset it so two output channels aren't controlled by one input channel
+        if (INPUT_CHANNELS[channel] == inputChannel){
+            INPUT_CHANNELS[channel] = 16;
+        }
+    }
+    INPUT_CHANNELS[outputChannel] = inputChannel;                  //  [OutputCh] = InputCh]
+
+    
+    // Update output channel to output pin configuration
+    // SERVO_PINS[16] -> each index represents an output channel and each element represents an output Pin
+    // THIS output channel goes to THIS output PIN
+    // Make sure that we clear redundant output channel to output pin configuration
+    for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        // If new output pin is already being used, reset it so one output in isn't controlled by two output channels
+        if (SERVO_PINS[channel] == outputPin){
+            SERVO_PINS[channel] = servoMgr->PIN_DISCONNECTED;
+        }
+    }
+    SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    //  OutputPins[OutputCh] = New Output Pin]
 
     // Delete old servoMgr
     delete servoMgr;
 
     // Set new pwm configuration
-    for (uint8_t gpio = 0; gpio < GPIO_PIN_PWM_OUTPUTS_COUNT; gpio++){
-        config.SetPwmChannel(gpio,(uint16_t)0, INPUT_CHANNELS[gpio] - 1, false, som50Hz, false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
+    for (uint8_t outputChannel = 0; outputChannel < GPIO_PIN_PWM_OUTPUTS_COUNT; outputChannel++){
+        // Assign Input Channel -> Output Channel configuration
+        config.SetPwmChannel(outputChannel,(uint16_t)0, INPUT_CHANNELS[outputChannel] - 1, false, som50Hz, false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
     }
     config.Commit();
 
@@ -213,6 +237,16 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t pwmChannel, uint8_t 
     servoMgr->initialize();
 }
 #endif // End FRSKY_R9MM
+
+// Get an output channel given an input channel 
+static uint8_t getOutputChannel(uint8_t inputChannel){
+    for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        if (INPUT_CHANNELS[channel] == inputChannel){
+            return channel;
+        }
+    }
+    return -1;
+}
 
 static int start()
 {
@@ -233,24 +267,34 @@ static int event()
     }
 
 #ifdef FRSKY_R9MM
+
+
     if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_VAL){
+        uint8_t outputChannel = getOutputChannel(pwmChannel);
+        // Make sure we are given a valid output channel
+        if (outputChannel == -1){
+            LED_device.test(1);
+            return DURATION_IMMEDIATELY;
+        }
         updatePWM = false;
         if (pwmType == 's'){
-            servoMgr->writeMicroseconds(pwmChannel, pwmValue);
+            servoMgr->writeMicroseconds(outputChannel, pwmValue);
         }
         else if (pwmType == 'd'){
-            servoMgr->writeDuty(pwmChannel, pwmValue);
+            servoMgr->writeDuty(outputChannel, pwmValue);
         }
     } else if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_CH){
         updatePWM = false;
         // If channel is active then we should stop it first
-        if (servoMgr->isPwmActive(pwmChannel)){
-            servoMgr->stopPwm(pwmChannel);
-        }
+        // if (servoMgr->isPwmActive(pwmChannel)){
+            // servoMgr->stopPwm(pwmChannel);
+        // }
+        servoMgr->stopAllPwm();
         updatePwmChannels(pwmInputChannel, pwmChannel, pwmPin);
-    } else{
-        LED_device.test(1);
     }
+    //  else {
+        // LED_device.test(1);
+    // }
 
 #endif // End FRSKY_R9MM
 

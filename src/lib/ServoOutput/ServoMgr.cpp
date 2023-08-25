@@ -6,7 +6,9 @@
 #include "logging.h"
 #include "waveform_8266.h"
 #include <math.h>
+#include "device.h"
 
+extern device_t LED_device; 
 #ifdef FRSKY_R9MM
     #include "variant_R9MM.h"
 #endif
@@ -138,9 +140,28 @@ void ServoMgr::initialize()
         const uint8_t pin = _pins[ch];
         if (pin != PIN_DISCONNECTED)
         {
-            HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-            HAL_Delay(10);
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
+            switch(pin){
+                case R9m_Ch1:
+                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+                    HAL_Delay(10);
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
+                    break;
+                
+                case R9m_Ch2:
+                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+                    HAL_Delay(10);
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0U);  // ALL LEDs OFF
+                    break;
+
+                case R9m_Ch3:
+                    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+                    HAL_Delay(10);
+                    __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0U);  // ALL LEDs OFF
+                    break;
+
+                default:
+                    break;
+            }
         }
     }
 #elif defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
@@ -157,6 +178,7 @@ void ServoMgr::initialize()
 
 }
 
+// ch = output
 void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 {
     const uint8_t pin = _pins[ch];
@@ -170,15 +192,29 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 #elif defined(PLATFORM_ESP8266)
     startWaveform8266(pin, valueUs, _refreshInterval[ch] - valueUs);
 #elif defined(FRSKY_R9MM)
-    if (ch == 0){
-        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
-    } else if (ch == 1){
-        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
-        __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
-    } else if (ch == 2){
-        uint16_t mappedValue = map(valueUs, 0, 2100, 0, htim2.Init.Period);
-        __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+    uint16_t mappedValue = 0;
+    switch(pin){
+        case R9m_Ch1:
+            LED_device.test(0);
+            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+            break;
+        
+        case R9m_Ch2:
+            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            break;
+
+        case R9m_Ch3:
+            mappedValue = map(valueUs, 0, 2100, 0, htim2.Init.Period);
+            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+            break;
+
+        default:
+            LED_device.test(2);
+            // mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+            // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+            break;
     }
 #endif
 }
@@ -197,8 +233,26 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
     uint16_t high = map(duty, 0, 1000, 0, _refreshInterval[ch]);
     startWaveform8266(pin, high, _refreshInterval[ch] - high);
 #elif defined(FRSKY_R9MM)
-    uint16_t valueUs = map(duty, 0, 100, 0, htim1.Init.Period);
-    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4,valueUs);
+    uint16_t mappedValue = 0;
+    switch(pin){
+        case R9m_Ch1:
+            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+            break;
+        
+        case R9m_Ch2:
+            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            break;
+
+        case R9m_Ch3:
+            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+            break;
+
+        default:
+            break;
+    }
 #endif
 }
 
@@ -231,8 +285,25 @@ void ServoMgr::stopPwm(uint8_t ch)
 #elif defined(PLATFORM_ESP8266)
     stopWaveform8266(pin);
 #elif defined(FRSKY_R9MM)
-    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, (uint16_t)900);
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    switch(pin){
+        case R9m_Ch1:
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
+            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+            break;
+        
+        case R9m_Ch2:
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
+            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+            break;
+
+        case R9m_Ch3:
+            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);
+            HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+            break;
+
+        default:
+            break;
+    }
 #endif
     digitalWrite(pin, LOW);
 }
