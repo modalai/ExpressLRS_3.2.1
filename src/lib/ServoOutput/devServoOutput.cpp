@@ -1,5 +1,3 @@
-// #define PLATFORM_STM32
-// #define FRSKY_R9MM
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
@@ -10,20 +8,14 @@
 #include "rxtx_intf.h"
 
 #ifdef FRSKY_R9MM
-#define GPIO_PIN_PWM_OUTPUTS_COUNT 3
-extern bool updatePWM;
-extern uint8_t pwmPin;
-extern uint8_t pwmCmd;
-extern uint8_t pwmChannel;
-extern uint8_t pwmInputChannel;
-extern uint8_t pwmType;
-extern uint16_t pwmValue; 
-extern device_t LED_device; 
-static uint8_t INPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT];
+bool servoInitialized;
+static uint8_t SERVO_PINS[GPIO_PIN_PWM_OUTPUTS_COUNT];
+static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {6, NO_INPUT, NO_INPUT};
 static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
-#endif // End FRSKY_R9MM
-
+#else
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
+#endif 
+
 static ServoMgr *servoMgr;
 // true when the RX has a new channels packet
 static bool newChannelsAvailable;
@@ -106,6 +98,14 @@ static int servosUpdate(unsigned long now)
         for (unsigned ch = 0; ch < servoMgr->getOutputCnt(); ++ch)
         {
             const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
+
+#ifdef FRSKY_R9MM
+            // Don't both updating pins not being used 
+            if (chConfig->val.inputChannel == NO_INPUT){
+                continue;
+            }
+#endif 
+
             const unsigned crsfVal = CRSF::ChannelData[chConfig->val.inputChannel];
             // crsfVal might 0 if this is a switch channel and it has not been
             // received yet. Delay initializing the servo until the channel is valid
@@ -154,20 +154,15 @@ static void initialize()
     }
 
 #ifdef FRSKY_R9MM
-        INPUT_CHANNELS[0] = {7}; 
-        INPUT_CHANNELS[1] = {16}; 
-        INPUT_CHANNELS[2] = {16}; 
-        config.SetPwmChannel((uint8_t)0,(uint16_t)0,INPUT_CHANNELS[0]-1,false,som50Hz,false);    // PA11 OutputCh: 0  InputCh: 7
-        config.SetPwmChannel((uint8_t)1,(uint16_t)0,INPUT_CHANNELS[1]-1,false,som50Hz,false);    // PA8  OutputCh: 1  InputCh: 16
-        config.SetPwmChannel((uint8_t)2,(uint16_t)0,INPUT_CHANNELS[2]-1,false,som50Hz,false);    // PA2  OutputCh: 2  InputCh: 16
+        servoInitialized = false;
+        for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
+            config.SetPwmChannel(channel, 0, OUTPUT_CHANNELS[channel], false, som50Hz, false);
+        }
         config.Commit();
-        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
-#else
-        servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
 #endif
 
     // Assign each output channel to a output pin
-    for (unsigned ch = 0; ch < servoMgr->getOutputCnt(); ++ch)
+    for (unsigned ch = 0; ch < GPIO_PIN_PWM_OUTPUTS_COUNT; ++ch)
     {
         uint8_t pin = GPIO_PIN_PWM_OUTPUTS[ch];
 #if (defined(DEBUG_LOG) || defined(DEBUG_RCVR_LINKSTATS)) && (defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32))
@@ -181,7 +176,9 @@ static void initialize()
     }
 
     // Initialize all servos to low ASAP
+    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
     servoMgr->initialize();
+    servoInitialized = true;
 }
 
 #ifdef FRSKY_R9MM
@@ -192,56 +189,39 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
         return;
     }
 
-    // Get info on current config:
-    //      - Input channels stored in INPUT_CHANNELS
-    //      - Output channels stored in OUTPUT_CHANNELS and also servoMgr 
-    //      - Output pins stored in SERVO_PINS 
-
-    // Update input channel to output channel configuration
-    // INPUT_CHANNELS[3] -> each index represents an output channel and each element represents an input Channel
-    // Make sure that we clear redundant input to output channel configuration
+    // If new input channel is already being used, reset it so two output channels aren't controlled by one input channel
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
-        // If new input channel is already being used, reset it so two output channels aren't controlled by one input channel
-        if (INPUT_CHANNELS[channel] == inputChannel){
-            INPUT_CHANNELS[channel] = 16;
+        if (OUTPUT_CHANNELS[channel] == inputChannel){
+            OUTPUT_CHANNELS[channel] = NO_INPUT;
         }
     }
-    INPUT_CHANNELS[outputChannel] = inputChannel;                  //  [OutputCh] = InputCh]
+    OUTPUT_CHANNELS[outputChannel] = inputChannel;                  
 
-    
     // Update output channel to output pin configuration
-    // SERVO_PINS[16] -> each index represents an output channel and each element represents an output Pin
-    // THIS output channel goes to THIS output PIN
-    // Make sure that we clear redundant output channel to output pin configuration
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
-        // If new output pin is already being used, reset it so one output in isn't controlled by two output channels
-        if (SERVO_PINS[channel] == outputPin){
-            SERVO_PINS[channel] = servoMgr->PIN_DISCONNECTED;
+        if (SERVO_PINS[channel] == GPIO_PIN_PWM_OUTPUTS[outputPin]){
+            SERVO_PINS[channel] = servoMgr->PIN_AVAILABLE;
         }
     }
-    SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    //  OutputPins[OutputCh] = New Output Pin]
+    SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
 
-    // Delete old servoMgr
     delete servoMgr;
 
-    // Set new pwm configuration
-    for (uint8_t outputChannel = 0; outputChannel < GPIO_PIN_PWM_OUTPUTS_COUNT; outputChannel++){
-        // Assign Input Channel -> Output Channel configuration
-        config.SetPwmChannel(outputChannel,(uint16_t)0, INPUT_CHANNELS[outputChannel] - 1, false, som50Hz, false);    // Right tri-state switch,  PA11 InputCh: 7  Ch: 1 
+    // Set new configuration
+    for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        config.SetPwmChannel(channel,(uint16_t)0, OUTPUT_CHANNELS[channel], false, som50Hz, false);    
     }
     config.Commit();
 
-    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
-
     // Initialize all servos to low ASAP
+    servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
     servoMgr->initialize();
 }
 #endif // End FRSKY_R9MM
 
-// Get an output channel given an input channel 
 static uint8_t getOutputChannel(uint8_t inputChannel){
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
-        if (INPUT_CHANNELS[channel] == inputChannel){
+        if (OUTPUT_CHANNELS[channel] == inputChannel){
             return channel;
         }
     }
@@ -267,15 +247,12 @@ static int event()
     }
 
 #ifdef FRSKY_R9MM
-
-
     if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_VAL){
-        uint8_t outputChannel = getOutputChannel(pwmChannel);
-        // Make sure we are given a valid output channel
+        uint8_t outputChannel = getOutputChannel(pwmInputChannel);
         if (outputChannel == -1){
-            LED_device.test(1);
             return DURATION_IMMEDIATELY;
         }
+
         updatePWM = false;
         if (pwmType == 's'){
             servoMgr->writeMicroseconds(outputChannel, pwmValue);
@@ -283,18 +260,17 @@ static int event()
         else if (pwmType == 'd'){
             servoMgr->writeDuty(outputChannel, pwmValue);
         }
+
     } else if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_CH){
         updatePWM = false;
+        
         // If channel is active then we should stop it first
-        // if (servoMgr->isPwmActive(pwmChannel)){
-            // servoMgr->stopPwm(pwmChannel);
-        // }
-        servoMgr->stopAllPwm();
-        updatePwmChannels(pwmInputChannel, pwmChannel, pwmPin);
+        if (servoMgr->isPwmActive(pwmOutputChannel)){
+            servoMgr->stopPwm(pwmOutputChannel);
+        }
+
+        updatePwmChannels(pwmInputChannel, pwmOutputChannel, pwmPin);
     }
-    //  else {
-        // LED_device.test(1);
-    // }
 
 #endif // End FRSKY_R9MM
 

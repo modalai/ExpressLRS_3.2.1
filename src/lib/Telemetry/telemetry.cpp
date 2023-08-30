@@ -14,7 +14,6 @@ using namespace std;
 #endif
 
 #if CRSF_RX_MODULE
-extern device_t LED_device;
 
 Telemetry::Telemetry()
 {
@@ -209,9 +208,6 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
 {
     const crsf_header_t *header = (crsf_header_t *) package;
 
-    // if (package[3] == PWM::SET_PWM_CH){
-    //     LED_device.test(0);
-    // }
     if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == 'b' && package[4] == 'l')
     {
         callBootloader = true;
@@ -235,11 +231,10 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
     }
     if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == PWM::SET_PWM_CH)
     {
-        // LED_device.test(2);
         callUpdatePWM = true;
         pwmPin = package[6]-1;
         pwmCmd = package[3];
-        pwmChannel = package[4]-1;      // output channel
+        pwmOutputChannel = package[4]-1;      // output channel
         pwmInputChannel = package[5]-1;
         return true;
     }

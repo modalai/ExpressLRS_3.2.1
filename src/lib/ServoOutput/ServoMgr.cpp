@@ -1,5 +1,3 @@
-// #define PLATFORM_STM32
-// #define FRSKY_R9MM
 #if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32) || defined(FRSKY_R9MM) || defined(PLATFORM_STM32)
 
 #include "ServoMgr.h"
@@ -8,9 +6,11 @@
 #include <math.h>
 #include "device.h"
 
-extern device_t LED_device; 
 #ifdef FRSKY_R9MM
-    #include "variant_R9MM.h"
+#include "variant_R9MM.h"
+#define GPIO_PIN_PWM_OUTPUTS_COUNT 3
+extern bool servoInitialized;
+static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
 #endif
 
 /* Private variables */
@@ -130,33 +130,42 @@ void ServoMgr::initialize()
 {
 #ifdef FRSKY_R9MM
     /* Init GPIOs, TIM1, TIM2*/
-    GPIO_Init();
-    TIM1_Init();
-    TIM2_Init();
+    
+    if (!servoInitialized){
+        GPIO_Init();
+        TIM1_Init();
+        TIM2_Init();
+    }
 
-    /* Start PWM on each CH at 900us so LEDs on LED Bar are all off */
+    /* Start PWM on each CH at 0us so LEDs on LED Bar are all off */
     for (uint8_t ch = 0; ch < _outputCnt; ++ch)
     {
         const uint8_t pin = _pins[ch];
+        if (pin == PIN_AVAILABLE){
+            for (int channel = 0; channel < _outputCnt; ++channel){
+                if (_pins[channel] == PIN_AVAILABLE){
+                    digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
+                }
+            }
+            continue;
+        }
+
         if (pin != PIN_DISCONNECTED)
         {
             switch(pin){
                 case R9m_Ch1:
                     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-                    HAL_Delay(10);
-                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0U);  // ALL LEDs OFF
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);  // ALL LEDs OFF
                     break;
                 
                 case R9m_Ch2:
                     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-                    HAL_Delay(10);
-                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0U);  // ALL LEDs OFF
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);  // ALL LEDs OFF
                     break;
 
                 case R9m_Ch3:
                     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-                    HAL_Delay(10);
-                    __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0U);  // ALL LEDs OFF
+                    __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);  // ALL LEDs OFF
                     break;
 
                 default:
@@ -178,14 +187,18 @@ void ServoMgr::initialize()
 
 }
 
-// ch = output
 void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 {
+    if (ch > getOutputCnt()){
+        return;
+    }
+    
     const uint8_t pin = _pins[ch];
-    if (pin == PIN_DISCONNECTED)
+    if (pin == PIN_DISCONNECTED || pin == PIN_AVAILABLE)
     {
         return;
     }
+    
     _activePwmChannels |= (1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcWrite(ch, map(valueUs, 0, _refreshInterval[ch], 0, (1 << _resolution_bits[ch]) - 1));
@@ -195,7 +208,6 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
     uint16_t mappedValue = 0;
     switch(pin){
         case R9m_Ch1:
-            LED_device.test(0);
             mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
             __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
             break;
@@ -211,9 +223,6 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
             break;
 
         default:
-            LED_device.test(2);
-            // mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
-            // __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
             break;
     }
 #endif
@@ -221,11 +230,16 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 
 void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
 {
+    if (ch > getOutputCnt()){
+        return;
+    }
+
     const uint8_t pin = _pins[ch];
-    if (pin == PIN_DISCONNECTED)
+    if (pin == PIN_DISCONNECTED || pin == PIN_AVAILABLE)
     {
         return;
     }
+
     _activePwmChannels |= (1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcWrite(ch, map(duty, 0, 1000, 0, (1 << _resolution_bits[ch]) - 1));
@@ -275,37 +289,40 @@ void ServoMgr::setRefreshInterval(uint8_t ch, uint16_t intervalUs)
 void ServoMgr::stopPwm(uint8_t ch)
 {
     const uint8_t pin = _pins[ch];
-    if (pin == PIN_DISCONNECTED)
+    if (pin == PIN_DISCONNECTED || pin == PIN_AVAILABLE)
     {
         return;
     }
     _activePwmChannels &= ~(1 << ch);
 #if defined(PLATFORM_ESP32)
     ledcDetachPin(pin);
+    digitalWrite(pin, LOW);
 #elif defined(PLATFORM_ESP8266)
     stopWaveform8266(pin);
+    digitalWrite(pin, LOW);
 #elif defined(FRSKY_R9MM)
     switch(pin){
         case R9m_Ch1:
             __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
             HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+            digitalWrite(pin, LOW);
             break;
         
         case R9m_Ch2:
             __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
             HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+            digitalWrite(pin, LOW);
             break;
 
         case R9m_Ch3:
             __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);
-            HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+            // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and digitalWrite(pin, LOW) doesn't fix it so we leave it...
             break;
 
         default:
             break;
     }
 #endif
-    digitalWrite(pin, LOW);
 }
 
 void ServoMgr::stopAllPwm()
@@ -320,7 +337,7 @@ void ServoMgr::stopAllPwm()
 void ServoMgr::writeDigital(uint8_t ch, bool value)
 {
     const uint8_t pin = _pins[ch];
-    if (pin == PIN_DISCONNECTED)
+    if (pin == PIN_DISCONNECTED || pin == PIN_AVAILABLE)
     {
         return;
     }

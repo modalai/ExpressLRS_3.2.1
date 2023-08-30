@@ -5,7 +5,6 @@
 #include "stm32f1xx_hal.h"
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-// void Error_Handler(void);
 
 class ServoMgr
 {
@@ -33,6 +32,7 @@ public:
     inline uint8_t getOutputCnt() const { return _outputCnt; }
 
     const uint8_t PIN_DISCONNECTED = 0xff;
+    const uint8_t PIN_AVAILABLE = 0xfe;
 
 private:
 #if defined(PLATFORM_ESP32)

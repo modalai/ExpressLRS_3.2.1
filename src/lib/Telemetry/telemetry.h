@@ -14,6 +14,8 @@ enum CustomTelemSubTypeID : uint8_t {
 enum PWM : uint8_t {
     SET_PWM_CH = 0xF3,
     SET_PWM_VAL = 0xF4,
+    SET_PWM_MICRO = 0xF5,
+    SET_PWM_DUTY = 0xF6,
     SET_PWM_DEFAULT = 0xFF
 };
 
@@ -71,7 +73,7 @@ public:
     uint8_t GetPwmCmd(){ return pwmCmd;}
     uint8_t GetPwmPin(){ return pwmPin;}
     uint8_t GetPwmType(){ return pwmType;}
-    uint8_t GetPwmChannel(){ return pwmChannel;}
+    uint8_t GetPwmChannel(){ return pwmOutputChannel;}
     uint8_t GetPwmInputChannel(){ return pwmInputChannel;}
     uint16_t GetPwmValue(){ return pwmValue;}
     uint8_t UpdatedPayloadCount();
@@ -88,7 +90,7 @@ private:
     uint8_t pwmCmd;
     uint8_t pwmPin;
     uint8_t pwmType;
-    uint8_t pwmChannel;
+    uint8_t pwmOutputChannel;
     uint16_t pwmInputChannel;
     uint16_t pwmValue;
     bool callBootloader;
