@@ -232,9 +232,9 @@ bool Telemetry::AppendTelemetryPackage(uint8_t *package)
     if (header->type == CRSF_FRAMETYPE_COMMAND && package[3] == PWM::SET_PWM_CH)
     {
         callUpdatePWM = true;
-        pwmPin = package[6]-1;
+        pwmPin = package[4]-1;
         pwmCmd = package[3];
-        pwmOutputChannel = package[4]-1;      // output channel
+        pwmOutputChannel = package[4]-1;      
         pwmInputChannel = package[5]-1;
         return true;
     }

@@ -316,7 +316,7 @@ void ServoMgr::stopPwm(uint8_t ch)
 
         case R9m_Ch3:
             __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);
-            // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and digitalWrite(pin, LOW) doesn't fix it so we leave it...
+            // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and writing the pin low doesn't fix it so we leave it...
             break;
 
         default:
