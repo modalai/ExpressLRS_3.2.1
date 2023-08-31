@@ -8,6 +8,7 @@
 #include "rxtx_intf.h"
 
 #ifdef FRSKY_R9MM
+extern bool currentPwmConfig;
 bool servoInitialized;
 static uint8_t SERVO_PINS[GPIO_PIN_PWM_OUTPUTS_COUNT];
 static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {6, NO_INPUT, NO_INPUT};
@@ -100,7 +101,7 @@ static int servosUpdate(unsigned long now)
             const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
 
 #ifdef FRSKY_R9MM
-            // Don't both updating pins not being used 
+            // Don't bother updating pins not being used 
             if (chConfig->val.inputChannel == NO_INPUT){
                 continue;
             }
@@ -155,10 +156,12 @@ static void initialize()
 
 #ifdef FRSKY_R9MM
         servoInitialized = false;
-        for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
-            config.SetPwmChannel(channel, 0, OUTPUT_CHANNELS[channel], false, som50Hz, false);
+        if (!currentPwmConfig){
+            for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
+                config.SetPwmChannel(channel, 0, OUTPUT_CHANNELS[channel], false, som50Hz, false);
+            }
+            config.Commit();
         }
-        config.Commit();
 #endif
 
     // Assign each output channel to a output pin
