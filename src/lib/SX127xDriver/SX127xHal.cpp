@@ -58,6 +58,9 @@ void SX127xHal::init()
 #endif
 
 #ifdef PLATFORM_STM32
+  DBGLN("SPI MOSI: %u", GPIO_PIN_MOSI);
+  DBGLN("SPI MISO: %u", GPIO_PIN_MISO);
+  DBGLN("SPI SCK: %u", GPIO_PIN_SCK);
   SPI.setMOSI(GPIO_PIN_MOSI);
   SPI.setMISO(GPIO_PIN_MISO);
   SPI.setSCLK(GPIO_PIN_SCK);
@@ -67,11 +70,18 @@ void SX127xHal::init()
   SPI.begin();                         // SPI.setFrequency(10000000);
 #endif
 
+  DBGLN("SPI NSS(OUTPUT): %u", GPIO_PIN_NSS);
+  #if defined(GPIO_PIN_DIO0) && GPIO_PIN_DIO0 != UNDEF_PIN
+  DBGLN("SPI DIO0: %u", GPIO_PIN_DIO0);
+  #else
+  DBGLN("SPI DIO0 (INPUT) UNASSIGNED");
+  #endif
   pinMode(GPIO_PIN_NSS, OUTPUT);
   pinMode(GPIO_PIN_DIO0, INPUT);
 
   digitalWrite(GPIO_PIN_NSS, HIGH);
 
+  DBGLN("SPI RESET: %u", GPIO_PIN_RST);
   if (GPIO_PIN_RST != UNDEF_PIN)
   {
     pinMode(GPIO_PIN_RST, OUTPUT);
@@ -82,6 +92,7 @@ void SX127xHal::init()
     pinMode(GPIO_PIN_RST, INPUT); // leave floating
   }
 
+  DBGLN("Attaching interrupt");
   attachInterrupt(digitalPinToInterrupt(GPIO_PIN_DIO0), dioISR, RISING);
 }
 

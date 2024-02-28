@@ -78,19 +78,41 @@ void SX127xDriver::End()
 
 void SX127xDriver::ConfigLoraDefaults()
 {
+  // Setup LoRa chip to use TCXO
+  #ifdef FRSKY_R9MM
+  DBGLN("Set up TCXO BEGIN");
+  uint8_t tcxo = hal.readRegister(SX1276_REG_TCXO);
+  DBGLN("SX127X TCXO REG VAL: %u", tcxo);
+  tcxo |= SX1276_REG_TCXO_ON;
+  DBGLN("SX127X TCXO REG VAL (MODIFIED): %u", tcxo);
+  hal.writeRegister(SX1276_REG_TCXO, tcxo);
+  DBGLN("Set up TCXO END");
+  #endif
+  DBGLN("RADIO ASLEEP TO SET OPERATION MODE");
   hal.writeRegister(SX127X_REG_OP_MODE, SX127x_OPMODE_SLEEP);
+  DBGLN("Setting OP mode: %u (128 == LoRA)", ModFSKorLoRa);
   hal.writeRegister(SX127X_REG_OP_MODE, ModFSKorLoRa); //must be written in sleep mode
+  DBGLN("RADIO SET STANDBY MODE");
   SetMode(SX127x_OPMODE_STANDBY);
 
+  DBGLN("RADIO SET PayloadLength");
   hal.writeRegister(SX127X_REG_PAYLOAD_LENGTH, PayloadLength);
+  DBGLN("RADIO SET currSyncWord");
   SetSyncWord(currSyncWord);
+  DBGLN("RADIO SETUP TX/RX FIFO");
   hal.writeRegister(SX127X_REG_FIFO_TX_BASE_ADDR, SX127X_FIFO_TX_BASE_ADDR_MAX);
   hal.writeRegister(SX127X_REG_FIFO_RX_BASE_ADDR, SX127X_FIFO_RX_BASE_ADDR_MAX);
+  DBGLN("RADIO SETUP DIO MAPPING: 0b11000000");
   hal.setRegValue(SX127X_REG_DIO_MAPPING_1, 0b11000000, 7, 6); //undocumented "hack", looking at Table 18 from datasheet SX127X_REG_DIO_MAPPING_1 = 11 appears to be unspported by infact it generates an intterupt on both RXdone and TXdone, this saves switching modes.
+  DBGLN("RADIO SETUP LNA_BOOST_ON");
   hal.writeRegister(SX127X_REG_LNA, SX127X_LNA_BOOST_ON);
+  DBGLN("RADIO SETUP SX1278_REG_MODEM_CONFIG_3, SX1278_AGC_AUTO_ON | SX1278_LOW_DATA_RATE_OPT_OFF");
   hal.writeRegister(SX1278_REG_MODEM_CONFIG_3, SX1278_AGC_AUTO_ON | SX1278_LOW_DATA_RATE_OPT_OFF);
+  DBGLN("RADIO SETUP SX127X_REG_OCP, SX127X_OCP_ON | SX127X_OCP_150MA");
   hal.setRegValue(SX127X_REG_OCP, SX127X_OCP_ON | SX127X_OCP_150MA, 5, 0); //150ma max current
+  DBGLN("RADIO SETUP PREAMBLE_LENGTH_LSB");
   SetPreambleLength(SX127X_PREAMBLE_LENGTH_LSB);
+  DBGLN("RADIO SETUP IQinverted: %u", (uint8_t)IQinverted);
   hal.setRegValue(SX127X_REG_INVERT_IQ, (uint8_t)IQinverted, 6, 6);
 }
 
@@ -234,6 +256,7 @@ void ICACHE_RAM_ATTR SX127xDriver::SetFrequencyHz(uint32_t freq)
   SetMode(SX127x_OPMODE_STANDBY);
 
   int32_t FRQ = ((uint32_t)((double)freq / (double)FREQ_STEP));
+  // DBGLN("[SX127X] FREQ: %d", FRQ);
 
   uint8_t FRQ_MSB = (uint8_t)((FRQ >> 16) & 0xFF);
   uint8_t FRQ_MID = (uint8_t)((FRQ >> 8) & 0xFF);
@@ -248,6 +271,7 @@ void ICACHE_RAM_ATTR SX127xDriver::SetFrequencyReg(uint32_t freq, SX12XX_Radio_N
 {
   currFreq = freq;
   SetMode(SX127x_OPMODE_STANDBY);
+  // DBGLN("[SX127X] FREQ: %lu", (long unsigned)(freq * FREQ_STEP)/100);
 
   uint8_t FRQ_MSB = (uint8_t)((freq >> 16) & 0xFF);
   uint8_t FRQ_MID = (uint8_t)((freq >> 8) & 0xFF);
@@ -333,6 +357,7 @@ bool SX127xDriver::DetectChip()
 
 void ICACHE_RAM_ATTR SX127xDriver::TXnbISR()
 {
+  // DBGLN("RXnbISR");
   currOpmode = SX127x_OPMODE_STANDBY; //goes into standby after transmission
   //TXdoneMicros = micros();
   // The power level must be changed when in SX127x_OPMODE_STANDBY, so this lags power
@@ -348,6 +373,7 @@ void ICACHE_RAM_ATTR SX127xDriver::TXnb(uint8_t * data, uint8_t size, SX12XX_Rad
   //   DBGLN("abort TX");
   //   return; // we were already TXing so abort. this should never happen!!!
   // }
+  // DBGLN("TXnB");
   SetMode(SX127x_OPMODE_STANDBY);
 
   hal.TXenable();
@@ -361,6 +387,7 @@ void ICACHE_RAM_ATTR SX127xDriver::TXnb(uint8_t * data, uint8_t size, SX12XX_Rad
 
 void ICACHE_RAM_ATTR SX127xDriver::RXnbISR()
 {
+  // DBGLN("RXnbISR");
   hal.readRegisterFIFO(RXdataBuffer, PayloadLength);
   if (timeoutSymbols)
   {
@@ -383,10 +410,12 @@ void ICACHE_RAM_ATTR SX127xDriver::RXnb()
   hal.writeRegister(SX127X_REG_FIFO_ADDR_PTR, SX127X_FIFO_RX_BASE_ADDR_MAX);
   if (timeoutSymbols)
   {
+    // DBGLN("RX mode RXSINGLE");
     SetMode(SX127x_OPMODE_RXSINGLE);
   }
   else
   {
+    // DBGLN("RX mode RXCONTINUOUS");
     SetMode(SX127x_OPMODE_RXCONTINUOUS);
   }
 }
@@ -605,6 +634,7 @@ void ICACHE_RAM_ATTR SX127xDriver::ClearIrqFlags()
 
 void ICACHE_RAM_ATTR SX127xDriver::IsrCallback()
 {
+    // DBGLN("RADIO ISR CALLBACK")
     uint8_t irqStatus = instance->GetIrqFlags();
     instance->ClearIrqFlags();
     if ((irqStatus & SX127X_CLEAR_IRQ_FLAG_TX_DONE) && (instance->currOpmode == SX127x_OPMODE_TX))

@@ -111,6 +111,12 @@ CRSF crsf(CRSF_TX_SERIAL);
     HardwareSerial CrsfRxSerial(USART3);
 #elif defined(TARGET_RX_FM30_MINI)
     #define CRSF_RX_SERIAL CRSF_TX_SERIAL
+#elif defined(FRSKY_R9MM)
+    #define CRSF_RX_SERIAL Serial
+    // #define CRSF_RX_SERIAL CrsfRxSerial
+    // HardwareSerial CrsfRxSerial(GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX); 
+    // HardwareSerial CrsfRxSerial(USART1, HALF_DUPLEX_DISABLED); 
+    // HardwareSerial debugSerial((PinName)GPIO_PIN_DEBUG_RX ,(PinName)GPIO_PIN_DEBUG_RX); 
 #else
     #define CRSF_RX_SERIAL Serial
 #endif
@@ -1101,6 +1107,11 @@ static void setupSerial()
     CRSF_RX_SERIAL.begin(firmwareOptions.uart_baud);
 
     CRSF_TX_SERIAL.setTx(GPIO_PIN_RCSIGNAL_TX);
+#elif defined(FRSKY_R9MM)
+    CRSF_RX_SERIAL.setRx(GPIO_PIN_RCSIGNAL_RX);
+    CRSF_RX_SERIAL.begin(firmwareOptions.uart_baud);
+    // debugSerial.begin(firmwareOptions.uart_baud);
+    CRSF_TX_SERIAL.setTx(GPIO_PIN_RCSIGNAL_TX);
 #else
 #if defined(GPIO_PIN_RCSIGNAL_RX_SBUS) && defined(GPIO_PIN_RCSIGNAL_TX_SBUS)
     if (firmwareOptions.r9mm_mini_sbus)
@@ -1147,6 +1158,8 @@ static void setupSerial()
     Serial.begin(firmwareOptions.uart_baud, SERIAL_8N1, -1, -1, firmwareOptions.invert_tx);
 #endif
 
+    // SerialLogger = &debugSerial;
+    // SerialLogger = &CrsfRxSerial;
     SerialLogger = &Serial;
 }
 
@@ -1237,20 +1250,24 @@ void HandleUARTin()
     }
     while (CRSF_RX_SERIAL.available())
     {
+        // DBGLN("Received Command");
         telemetry.RXhandleUARTin(CRSF_RX_SERIAL.read());
 
         if (telemetry.ShouldCallBootloader())
         {
+            // DBGLN("Received Bootloader command");
             reset_into_bootloader();
         }
         if (telemetry.ShouldCallEnterBind() && connectionState != connected)
         {
+            // DBGLN("Received Bind command");
             InForceUnbindMode = false;
             config.SetIsBound(false);
             EnterBindingMode();
         }
         if (telemetry.ShouldCallUnbind())
         {
+            // DBGLN("Received Unbind command");
             InForceUnbindMode = true;
             config.SetIsBound(false);
             LostConnection(true);
@@ -1263,12 +1280,14 @@ void HandleUARTin()
         }
         if (telemetry.ShouldSendDeviceFrame())
         {
+            // DBGLN("Received Device Information command");
             uint8_t deviceInformation[DEVICE_INFORMATION_LENGTH];
             crsf.GetDeviceInformation(deviceInformation, 0);
             crsf.SetExtendedHeaderAndCrc(deviceInformation, CRSF_FRAMETYPE_DEVICE_INFO, DEVICE_INFORMATION_FRAME_SIZE, CRSF_ADDRESS_CRSF_RECEIVER, CRSF_ADDRESS_FLIGHT_CONTROLLER);
             crsf.sendMSPFrameToFC(deviceInformation);
         }
         if (telemetry.ShouldCallUpdatePWM()){
+            // DBGLN("Received Update PWM command");
             updatePWM = true;
             pwmPin = telemetry.GetPwmPin();
             pwmCmd = telemetry.GetPwmCmd();
@@ -1276,6 +1295,9 @@ void HandleUARTin()
             pwmInputChannel = telemetry.GetPwmInputChannel();
             pwmType = telemetry.GetPwmType();
             pwmValue = telemetry.GetPwmValue();
+            // DBGLN("Pwm Pin: %u\tPwm Cmd: %u", pwmPin, pwmCmd);
+            // DBGLN("Input Ch: %u\tOutput Ch: %u", pwmInputChannel, pwmOutputChannel);
+            // DBGLN("Pwm Type: %s\tPwm Val: %u", pwmType, pwmValue);
             ServoOut_device.event();
         }
     }
@@ -1283,33 +1305,47 @@ void HandleUARTin()
 
 static void setupRadio()
 {
+    DBGLN("\n\rBegin Radio SETUP");
     Radio.currFreq = GetInitialFreq();
+    DBGLN("Initial FREQ: %d", Radio.currFreq);
 #if defined(RADIO_SX127X)
     //Radio.currSyncWord = UID[3];
 #endif
+    DBGLN("\n\rAttempting Radio Begin");
     bool init_success = Radio.Begin();
+    DBGLN("Radio Begin End\n\r");
+    DBGLN("\n\rPower Init BEGIN");
     POWERMGNT.init();
+    DBGLN("Power Init DONE\n\r");
     if (!init_success)
     {
         DBGLN("Failed to detect RF chipset!!!");
         connectionState = radioFailed;
         return;
+    } else {
+        DBGLN("Detected RF Chip");
     }
 
+    DBGLN("\n\rSetting Power BEGIN");
     POWERMGNT.setPower((PowerLevels_e)config.GetPower());
+    DBGLN("Setting Power DONE\n\r");
 
 #if defined(Regulatory_Domain_EU_CE_2400)
     LBTEnabled = (config.GetPower() > PWR_10mW);
 #endif
 
+    DBGLN("Setting Rx Done CB");
     Radio.RXdoneCallback = &RXdoneISR;
+    DBGLN("Setting TX Done CB");
     Radio.TXdoneCallback = &TXdoneISR;
 
+    DBGLN("Getting initial RF Link Rate");
     scanIndex = config.GetRateInitialIdx();
     SetRFLinkRate(scanIndex);
     // Start slow on the selected rate to give it the best chance
     // to connect before beginning rate cycling
     RFmodeCycleMultiplier = RFmodeCycleMultiplierSlow / 2;
+    DBGLN("End Radio SETUP\n\n");
 }
 
 static void updateTelemetryBurst()
@@ -1536,6 +1572,7 @@ void setup()
         // serial setup must be done before anything as some libs write
         // to the serial port and they'll block if the buffer fills
         setupSerial();
+        DBGLN("Serial Setup")
         // Init EEPROM and load config, checking powerup count
         setupConfigAndPocCheck();
 
@@ -1558,6 +1595,7 @@ void setup()
             hwTimer.callbackTock = &HWtimerCallbackTock;
             hwTimer.callbackTick = &HWtimerCallbackTick;
 
+            DBGLN("Setting Radio RXnb, crsf.Begin(), and hwTimer.Init()");
             MspReceiver.SetDataToReceive(MspData, ELRS_MSP_BUFFER);
             Radio.RXnb();
             crsf.Begin();
@@ -1570,12 +1608,16 @@ void setup()
     registerButtonFunction(ACTION_RESET_REBOOT, resetConfigAndReboot);
 #endif
 
+    DBGLN("Devices Start BEGIN");
     devicesStart();
+    DBGLN("Devices Start END");
+    DBGLN("[DBG]: Start Loop");
 }
 
 void loop()
 {
     unsigned long now = millis();
+    // DBGLN("Connection State: %i", (int)connectionState);
 
     if (MspReceiver.HasFinishedData())
     {
@@ -1583,8 +1625,6 @@ void loop()
     }
 
     devicesUpdate(now);
-
-
 
 #if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
     // If the reboot time is set and the current time is past the reboot time then reboot.
@@ -1639,6 +1679,7 @@ void loop()
         DBGLN("Timer locked");
     }
 
+    // DBGLN("Timer State: %i", (int)RXtimerState);
     uint8_t *nextPayload = 0;
     uint8_t nextPlayloadSize = 0;
     if (!TelemetrySender.IsActive() && telemetry.GetNextPayload(&nextPlayloadSize, &nextPayload))
@@ -1650,6 +1691,7 @@ void loop()
     updateSwitchMode();
     checkGeminiMode();
     debugRcvrLinkstats();
+    // DBGLN("[DBG]: End Loop");
 }
 
 struct bootloader {
@@ -1726,7 +1768,7 @@ void EnterBindingMode()
     // If the Radio Params (including InvertIQ) parameter changed, need to restart RX to take effect
     Radio.RXnb();
 
-    DBGLN("Entered binding mode at freq = %d", Radio.currFreq);
+    DBGLN("Entered binding mode at freq = %lu -> %lu", Radio.currFreq, (Radio.currFreq * 61.03515625)/100);
     devicesTriggerEvent();
 }
 

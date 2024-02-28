@@ -94,11 +94,11 @@ extern "C" {
 #define NUM_ANALOG_FIRST        46
 
 // On-board LED pin number
-#define LED_BUILTIN             13
+#define LED_BUILTIN             PB3
 #define LED_GREEN               LED_BUILTIN
 
 // On-board user button
-#define USER_BTN                PC13
+#define USER_BTN                PA1
 
 // Timer Definitions
 // Use TIM6/TIM7 when possible as servo and tone don't need GPIO output pin
@@ -109,10 +109,10 @@ extern "C" {
 #define SERIAL_UART_INSTANCE    1 //Connected to ST-Link
 // Default pin used for 'Serial' instance (ex: ST-Link)
 // Mandatory for Firmata
-#define PIN_SERIAL_RX           0
-#define PIN_SERIAL_TX           1
-//#define PIN_SERIAL_RX           PA10
-//#define PIN_SERIAL_TX           PA9
+// #define PIN_SERIAL_RX           0
+// #define PIN_SERIAL_TX           1
+#define PIN_SERIAL_RX           PA3
+#define PIN_SERIAL_TX           PA2
 
 // Adjust IRQ priority
 #define TIM_IRQ_PRIO            4

@@ -1,3 +1,4 @@
+// #define  FRSKY_R9MM
 #if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32) || defined(FRSKY_R9MM) || defined(PLATFORM_STM32)
 
 #include "ServoMgr.h"
@@ -8,19 +9,19 @@
 
 #ifdef FRSKY_R9MM
 #include "variant_R9MM.h"
-#define GPIO_PIN_PWM_OUTPUTS_COUNT 3
+#define GPIO_PIN_PWM_OUTPUTS_COUNT 4
 extern bool servoInitialized;
-static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
+static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3, R9m_Ch4};
 #endif
 
 /* Private variables */
 TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 /* Private function prototypes */
 static void GPIO_Init(void);
 static void TIM1_Init(void);
-static void TIM2_Init(void);
+static void TIM3_Init(void);
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -29,6 +30,7 @@ static void TIM2_Init(void);
 static void PWM_Error_Handler()
 {
   /* User can add his own implementation to report the HAL error return state */
+  DBGLN("PWM ERROR!");
   __disable_irq();
 //   while (1)
 //   {
@@ -132,9 +134,11 @@ void ServoMgr::initialize()
     /* Init GPIOs, TIM1, TIM2*/
     
     if (!servoInitialized){
+        DBGLN("Initializing PWMs BEGIN");
         GPIO_Init();
         TIM1_Init();
-        TIM2_Init();
+        TIM3_Init();
+        DBGLN("Initializing PWMs DONE");
     }
 
     /* Start PWM on each CH at 0us so LEDs on LED Bar are all off */
@@ -144,6 +148,7 @@ void ServoMgr::initialize()
         if (pin == PIN_AVAILABLE){
             for (int channel = 0; channel < _outputCnt; ++channel){
                 if (_pins[channel] == PIN_AVAILABLE){
+                    DBGLN("Setting %u LOW", GPIO_PIN_PWM_OUTPUTS[channel]);
                     digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
                 }
             }
@@ -164,8 +169,8 @@ void ServoMgr::initialize()
                     break;
 
                 case R9m_Ch3:
-                    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-                    __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);  // ALL LEDs OFF
+                    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+                    __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 0);  // ALL LEDs OFF
                     break;
 
                 default:
@@ -218,8 +223,8 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
             break;
 
         case R9m_Ch3:
-            mappedValue = map(valueUs, 0, 2100, 0, htim2.Init.Period);
-            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+            mappedValue = map(valueUs, 0, 2100, 0, htim3.Init.Period);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
             break;
 
         default:
@@ -261,7 +266,7 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
 
         case R9m_Ch3:
             mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, mappedValue);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
             break;
 
         default:
@@ -315,8 +320,8 @@ void ServoMgr::stopPwm(uint8_t ch)
             break;
 
         case R9m_Ch3:
-            __HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_3, 0);
-            // HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and writing the pin low doesn't fix it so we leave it...
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 0);
+            // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and writing the pin low doesn't fix it so we leave it...
             break;
 
         default:
@@ -433,34 +438,34 @@ static void TIM1_Init(void)
   * @param None
   * @retval None
   */
-static void TIM2_Init(void)
+static void TIM3_Init(void)
 {
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 72;        // 72MHz APB1 CLK -> 1MHz APB1 CLK
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 2068;         // 2100 us at 1 MHz 
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 72;        // 72MHz APB1 CLK -> 1MHz APB1 CLK
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 2068;         // 2100 us at 1 MHz 
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     PWM_Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
   {
     PWM_Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
   {
     PWM_Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     PWM_Error_Handler();
   }
@@ -468,11 +473,11 @@ static void TIM2_Init(void)
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     PWM_Error_Handler();
   }
-  HAL_TIM_MspPostInit(&htim2);
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -486,6 +491,7 @@ static void GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 }
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
@@ -503,16 +509,17 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   }
-  else if(htim->Instance==TIM2)
+  else if(htim->Instance==TIM3)
   {
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     /**TIM2 GPIO Configuration
-    PA2     ------> TIM2_CH3
+    PB0     ------> TIM3_CH3
+    PB1     ------> TIM3_CH4
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_2;
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
   }
 }
 

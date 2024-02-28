@@ -222,13 +222,13 @@ extern "C" {
   *            APB1 Prescaler                 = 2
   *            APB2 Prescaler                 = 1
   *            PLL_Source                     = HSE
-  *            PLL_Mul                        = 6
+  *            PLL_Mul                        = 9
   *            Flash Latency(WS)              = 2
   *            ADC Prescaler                  = 2
   * @param  None
   * @retval None
   */
-//72 MHz with 24Mhz ext. clock input/// (R9MM RX configuration)
+//72 MHz with 16Mhz ext. clock input/// (M0139 configuration)
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -238,11 +238,11 @@ void SystemClock_Config(void)
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV2; // 16MHz/2 -> 8MHz
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;            // 8MHz * 9 -> 72MHz
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();

@@ -11,7 +11,7 @@ extern device_t ServoOut_device;
 
 #ifdef FRSKY_R9MM
 #define NO_INPUT 0x0F
-#define GPIO_PIN_PWM_OUTPUTS_COUNT 3
+#define GPIO_PIN_PWM_OUTPUTS_COUNT 4
 extern bool updatePWM;
 extern uint8_t pwmPin;
 extern uint8_t pwmCmd;

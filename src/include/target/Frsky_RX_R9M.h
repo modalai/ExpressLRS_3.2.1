@@ -7,16 +7,16 @@ https://github.com/jaxxzer
     #define TARGET_EEPROM_ADDR              0x50
 #endif
 
-#define GPIO_PIN_NSS            PB12 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_DIO0           PA15 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_DIO1           PA1  // NOT CORRECT!!! PIN STILL NEEDS TO BE FOUND BUT IS CURRENTLY UNUSED
+#define GPIO_PIN_NSS            PA4 // RADIO 1 - SPI 1
+#define GPIO_PIN_DIO0           PB5 // RADIO 1 - SPI 1
+// #define GPIO_PIN_DIO1           PA1  // NOT CORRECT!!! PIN STILL NEEDS TO BE FOUND BUT IS CURRENTLY UNUSED
 /////////////////////////////////////// NOT FOUND ON SLIMPLUS EITHER.
-#define GPIO_PIN_MOSI           PB15 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_MISO           PB14 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_SCK            PB13 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_RST            PC14 //confirmed on SLIMPLUS, R900MINI
-#define GPIO_PIN_SDA            PB7
-#define GPIO_PIN_SCL            PB6
+#define GPIO_PIN_MOSI           PA7  // RADIO 1 - SPI1
+#define GPIO_PIN_MISO           PA6  // RADIO 1 - SPI1
+#define GPIO_PIN_SCK            PA5  // RADIO 1 - SPI1
+#define GPIO_PIN_RST            PB2  // RADIO 1 - SPI1
+#define GPIO_PIN_SDA            PB7  // EEPROM
+#define GPIO_PIN_SCL            PB6  // EEPROM
 
 #if defined(TARGET_R9SLIM_RX)
     #define GPIO_PIN_RCSIGNAL_RX    PA3  // RX1 PIN OF CONNECTOR 1 ON SLIM
@@ -33,9 +33,12 @@ https://github.com/jaxxzer
 #else
     #define GPIO_PIN_RCSIGNAL_RX        PA10
     #define GPIO_PIN_RCSIGNAL_TX        PA9
-    #define GPIO_PIN_RCSIGNAL_RX_SBUS   PA3
+    #define GPIO_PIN_DEBUG_RX           PA3
+    #define GPIO_PIN_DEBUG_TX           PA2
+    // #define GPIO_PIN_RCSIGNAL_RX_SBUS   PA3
     // #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2  // Turning this off so we can use pin for PWM
     #ifndef DEVICE_NAME
+        // #define DEVICE_NAME "ModalAI M0139"
         #define DEVICE_NAME "FrSky R9MM"
     #endif
 #endif
@@ -66,16 +69,17 @@ https://github.com/jaxxzer
     // RF Switch: HIGH = RX, LOW = TX
     #define GPIO_PIN_RX_ENABLE      PB3
 #else //R9MM_R9MINI
-    #define GPIO_PIN_LED_RED        PC1  // Red
-    #define GPIO_PIN_LED_GREEN      PB3  // Green
-    #define GPIO_PIN_BUTTON         PC13 // pullup e.g. LOW when pressed
+    #define GPIO_PIN_LED_RED        PA12  // Red
+    #define GPIO_PIN_LED_GREEN      PB3   // Green
+    #define GPIO_PIN_BUTTON         PA1   // pullup e.g. LOW when pressed
 #endif
 
 #define POWER_OUTPUT_FIXED 15 //MAX power for 900 RXes
 // External pads
-#define R9m_Ch1    PA11     // TIM1 CH4
-#define R9m_Ch2    PA8      // TIM1 CH1 
-#define R9m_Ch3    PA2      // TIM2 CH3 
+#define R9m_Ch1    PB0     // TIM3 CH3
+#define R9m_Ch2    PB1     // TIM3 CH4 
+#define R9m_Ch3    PA8     // TIM1 CH4 
+#define R9m_Ch4    PA11    // TIM1 CH1 
 // #define R9m_Ch3    PA9
 // #define R9m_Ch4    PA10
 // #define R9m_sbus   PA2

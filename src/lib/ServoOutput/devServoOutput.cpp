@@ -1,3 +1,5 @@
+// #define PLATFORM_STM32
+// #define FRSKY_R9MM
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
@@ -6,13 +8,14 @@
 #include "config.h"
 #include "helpers.h"
 #include "rxtx_intf.h"
+#include "logging.h"
 
 #ifdef FRSKY_R9MM
 extern bool currentPwmConfig;
 bool servoInitialized;
 static uint8_t SERVO_PINS[GPIO_PIN_PWM_OUTPUTS_COUNT];
-static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {6, NO_INPUT, NO_INPUT};
-static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3};
+static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {6, NO_INPUT, NO_INPUT, NO_INPUT};
+static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3, R9m_Ch4};
 #else
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 #endif 
@@ -151,16 +154,22 @@ static void initialize()
 {
     if (!OPT_HAS_SERVO_OUTPUT)
     {
+        DBGLN("RX HAS NO SERVO OUTPUT");
         return;
     }
 
 #ifdef FRSKY_R9MM
+        DBGLN("RX PWM INITALIZE DEVSERVOOUTPUT");
         servoInitialized = false;
         if (!currentPwmConfig){
             for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
                 config.SetPwmChannel(channel, 0, OUTPUT_CHANNELS[channel], false, som50Hz, false);
             }
             config.Commit();
+        }
+        for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
+            const rx_config_pwm_t* ch_temp = config.GetPwmChannel(channel);
+            DBGLN("[Ch %u] Input: %u\tFailsafe: %u", channel, ch_temp->val.inputChannel, ch_temp->val.failsafe);
         }
 #endif
 
