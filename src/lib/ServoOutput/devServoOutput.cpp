@@ -14,7 +14,7 @@
 extern bool currentPwmConfig;
 bool servoInitialized;
 static uint8_t SERVO_PINS[GPIO_PIN_PWM_OUTPUTS_COUNT];
-static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {6, NO_INPUT, NO_INPUT, NO_INPUT};
+static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {NO_INPUT, NO_INPUT, NO_INPUT, NO_INPUT};
 static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3, R9m_Ch4};
 #else
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
@@ -103,12 +103,12 @@ static int servosUpdate(unsigned long now)
         {
             const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
 
-#ifdef FRSKY_R9MM
-            // Don't bother updating pins not being used 
-            if (chConfig->val.inputChannel == NO_INPUT){
-                continue;
-            }
-#endif 
+// #ifdef FRSKY_R9MM
+//             // Don't bother updating pins not being used 
+//             if (chConfig->val.inputChannel == NO_INPUT){
+//                 continue;
+//             }
+// #endif 
 
             const unsigned crsfVal = CRSF::ChannelData[chConfig->val.inputChannel];
             // crsfVal might 0 if this is a switch channel and it has not been
@@ -159,7 +159,7 @@ static void initialize()
     }
 
 #ifdef FRSKY_R9MM
-        DBGLN("RX PWM INITALIZE DEVSERVOOUTPUT");
+        DBGLN("RX PWM INITIALIZE DEV_SERVO_OUTPUT");
         servoInitialized = false;
         if (!currentPwmConfig){
             for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; ++channel){
@@ -185,6 +185,7 @@ static void initialize()
         }
 #endif
         SERVO_PINS[ch] = pin;
+        DBGLN("SERVO_PINS[Ch:%u] -> Pin: %u", ch, pin);
     }
 
     // Initialize all servos to low ASAP
@@ -207,15 +208,20 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
             OUTPUT_CHANNELS[channel] = NO_INPUT;
         }
     }
-    OUTPUT_CHANNELS[outputChannel] = inputChannel;                  
+    OUTPUT_CHANNELS[outputChannel] = inputChannel;  // Bind output pin/channel to input channel
 
     // Update output channel to output pin configuration
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        // If the PWM pin we are updating is already assigned, disconnect it and label as available 
         if (SERVO_PINS[channel] == GPIO_PIN_PWM_OUTPUTS[outputPin]){
             SERVO_PINS[channel] = servoMgr->PIN_AVAILABLE;
         }
     }
-    SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
+    // if (inputChannel == NO_INPUT){
+    //     SERVO_PINS[outputChannel] = servoMgr->PIN_AVAILABLE;  
+    // } else{
+    //     SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
+    // }
 
     delete servoMgr;
 

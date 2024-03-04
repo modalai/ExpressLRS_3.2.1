@@ -32,6 +32,7 @@ md5sum $BUILD_DIR/$FW_VER
 adb push $BUILD_DIR/$FW_VER /usr/share/modalai/voxl-elrs/esptool/rx/
 
 cp $BUILD_DIR/$FW_VER .
-cp $BUILD_DIR/$FW_VER /home/jacob/repos/voxl/voxl-elrs/tools/bins
+cp $BUILD_DIR/$FW_VER ../bins/
+cp $BUILD_DIR/$FW_VER /home/jacob/repos/voxl/voxl-elrs/test_bins
 
 # adb push FrSky_R9Mini-3.2.1.3.bin /usr/share/modalai/voxl-elrs/esptool/rx/

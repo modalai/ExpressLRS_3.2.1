@@ -131,7 +131,7 @@ void ServoMgr::allocateLedcChn(uint8_t ch, uint16_t intervalUs, uint8_t pin)
 void ServoMgr::initialize()
 {
 #ifdef FRSKY_R9MM
-    /* Init GPIOs, TIM1, TIM2*/
+    /* Init GPIOs, TIM1, TIM3*/
     
     if (!servoInitialized){
         DBGLN("Initializing PWMs BEGIN");
@@ -145,37 +145,52 @@ void ServoMgr::initialize()
     for (uint8_t ch = 0; ch < _outputCnt; ++ch)
     {
         const uint8_t pin = _pins[ch];
-        if (pin == PIN_AVAILABLE){
-            for (int channel = 0; channel < _outputCnt; ++channel){
-                if (_pins[channel] == PIN_AVAILABLE){
-                    DBGLN("Setting %u LOW", GPIO_PIN_PWM_OUTPUTS[channel]);
-                    digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
-                }
-            }
-            continue;
+        if (pin != PIN_DISCONNECTED){
+            // for (int channel = 0; channel < _outputCnt; ++channel){
+                // if (_pins[channel] == PIN_AVAILABLE){
+            DBGLN("Setting %u LOW", pin);
+            digitalWrite(pin, LOW);
+            // digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
+                // } 
+            // }
+            // continue;
+        } else{
+            DBGLN("_pin[ch:%u] UNAVAILABLE: %u", ch, pin);
         }
 
         if (pin != PIN_DISCONNECTED)
         {
             switch(pin){
                 case R9m_Ch1:
-                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);  // ALL LEDs OFF
-                    break;
-                
-                case R9m_Ch2:
-                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);  // ALL LEDs OFF
-                    break;
-
-                case R9m_Ch3:
+                    DBGLN("Starting PWM on: _pins[%u] %u", ch, pin);
                     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
                     __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 0);  // ALL LEDs OFF
                     break;
+                
+                case R9m_Ch2:
+                    DBGLN("Starting PWM on: _pins[%u] %u", ch, pin);
+                    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+                    __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, 0);  // ALL LEDs OFF
+                    break;
+
+                case R9m_Ch3:
+                    DBGLN("Starting PWM on: _pins[%u] %u", ch, pin);
+                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);  // ALL LEDs OFF
+                    break;
+                
+                case R9m_Ch4:
+                    DBGLN("Starting PWM on: _pins[%u] %u", ch, pin);
+                    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+                    __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);  // ALL LEDs OFF
+                    break;
 
                 default:
+                    DBGLN("Trying to start Undefined pin: _pins[%u] %u", ch, pin);
                     break;
             }
+        } else {
+            DBGLN("_pins[%u] %u DISCONNECTED", ch, pin);
         }
     }
 #elif defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
@@ -195,10 +210,12 @@ void ServoMgr::initialize()
 void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
 {
     if (ch > getOutputCnt()){
+        DBGLN("CH:%u > getOutputCnt():%u", ch, getOutputCnt());
         return;
     }
     
     const uint8_t pin = _pins[ch];
+    DBGLN("WRITE MICROSECONDS. CH:%u\tPIN:%u\tACTIVE_CHANNELS:%u", ch, pin, _activePwmChannels);
     if (pin == PIN_DISCONNECTED || pin == PIN_AVAILABLE)
     {
         return;
@@ -209,22 +226,28 @@ void ServoMgr::writeMicroseconds(uint8_t ch, uint16_t valueUs)
     ledcWrite(ch, map(valueUs, 0, _refreshInterval[ch], 0, (1 << _resolution_bits[ch]) - 1));
 #elif defined(PLATFORM_ESP8266)
     startWaveform8266(pin, valueUs, _refreshInterval[ch] - valueUs);
-#elif defined(FRSKY_R9MM)
+#elif defined(FRSKY_R9MM) || defined(M0139)
     uint16_t mappedValue = 0;
     switch(pin){
+        DBGLN("Updating PWM on: _pins[%u] %u", ch, pin);
         case R9m_Ch1:
-            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+            mappedValue = map(valueUs, 0, 2100, 0, htim3.Init.Period);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
             break;
         
         case R9m_Ch2:
-            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            mappedValue = map(valueUs, 0, 2100, 0, htim3.Init.Period);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, mappedValue);
             break;
 
         case R9m_Ch3:
-            mappedValue = map(valueUs, 0, 2100, 0, htim3.Init.Period);
-            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
+            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            break;
+        
+        case R9m_Ch4:
+            mappedValue = map(valueUs, 0, 2100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
             break;
 
         default:
@@ -255,18 +278,23 @@ void ServoMgr::writeDuty(uint8_t ch, uint16_t duty)
     uint16_t mappedValue = 0;
     switch(pin){
         case R9m_Ch1:
-            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
+            mappedValue = map(duty, 0, 100, 0, htim3.Init.Period);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
             break;
         
         case R9m_Ch2:
-            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            mappedValue = map(duty, 0, 100, 0, htim3.Init.Period);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, mappedValue);
             break;
 
         case R9m_Ch3:
             mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
-            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, mappedValue);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, mappedValue);
+            break;
+
+        case R9m_Ch4:
+            mappedValue = map(duty, 0, 100, 0, htim1.Init.Period);
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, mappedValue);
             break;
 
         default:
@@ -308,20 +336,25 @@ void ServoMgr::stopPwm(uint8_t ch)
 #elif defined(FRSKY_R9MM)
     switch(pin){
         case R9m_Ch1:
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
-            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 0);
+            HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);
             digitalWrite(pin, LOW);
             break;
         
         case R9m_Ch2:
-            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
-            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_4, 0);
+            HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
             digitalWrite(pin, LOW);
             break;
 
         case R9m_Ch3:
-            __HAL_TIM_SetCompare(&htim3, TIM_CHANNEL_3, 0);
-            // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_3);     // Stopping the timer here sets the pin HIGH and writing the pin low doesn't fix it so we leave it...
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
+            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);     
+            break;
+
+        case R9m_Ch4:
+            __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
+            HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);    
             break;
 
         default:
@@ -356,7 +389,7 @@ void ServoMgr::writeDigital(uint8_t ch, bool value)
 }
 
 /**
-  * @brief TIM1 Initialization Function
+  * @brief TIM1 Initialization Function.
   *         ARR = 2068 (Max 2100 us period, 32 clock cycle delay so we use 2068)
   *         900  us HIGH -> 886  us (ARR * DUTY/100)... DUTY is ~42.84% (900/2100)
   *         1400 us HIGH -> 1379 us (ARR * DUTY/100)... DUTY is ~66.66% (1400/2100)
@@ -445,7 +478,7 @@ static void TIM3_Init(void)
   TIM_OC_InitTypeDef sConfigOC = {0};
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 72;        // 72MHz APB1 CLK -> 1MHz APB1 CLK
+  htim3.Init.Prescaler = 72;        
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 2068;         // 2100 us at 1 MHz 
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -471,9 +504,13 @@ static void TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    PWM_Error_Handler();
+  }
+if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     PWM_Error_Handler();
   }

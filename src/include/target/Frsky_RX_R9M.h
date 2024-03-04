@@ -7,16 +7,26 @@ https://github.com/jaxxzer
     #define TARGET_EEPROM_ADDR              0x50
 #endif
 
-#define GPIO_PIN_NSS            PA4 // RADIO 1 - SPI 1
-#define GPIO_PIN_DIO0           PB5 // RADIO 1 - SPI 1
-// #define GPIO_PIN_DIO1           PA1  // NOT CORRECT!!! PIN STILL NEEDS TO BE FOUND BUT IS CURRENTLY UNUSED
-/////////////////////////////////////// NOT FOUND ON SLIMPLUS EITHER.
+#define GPIO_PIN_SDA            PB7  // EEPROM
+#define GPIO_PIN_SCL            PB6  // EEPROM
+
+// /*  Radio 1
+#define GPIO_PIN_NSS            PA4  // RADIO 1 - SPI1
+#define GPIO_PIN_DIO0           PB5  // RADIO 1 - SPI1
 #define GPIO_PIN_MOSI           PA7  // RADIO 1 - SPI1
 #define GPIO_PIN_MISO           PA6  // RADIO 1 - SPI1
 #define GPIO_PIN_SCK            PA5  // RADIO 1 - SPI1
 #define GPIO_PIN_RST            PB2  // RADIO 1 - SPI1
-#define GPIO_PIN_SDA            PB7  // EEPROM
-#define GPIO_PIN_SCL            PB6  // EEPROM
+// */
+
+/*  Radio 2
+#define GPIO_PIN_NSS            PB12  // RADIO 2 - SPI2
+#define GPIO_PIN_DIO0           PB4   // RADIO 2 - SPI2
+#define GPIO_PIN_MOSI           PB15  // RADIO 2 - SPI2
+#define GPIO_PIN_MISO           PB14  // RADIO 2 - SPI2
+#define GPIO_PIN_SCK            PB13  // RADIO 2 - SPI2
+#define GPIO_PIN_RST            PA15  // RADIO 2 - SPI2
+*/
 
 #if defined(TARGET_R9SLIM_RX)
     #define GPIO_PIN_RCSIGNAL_RX    PA3  // RX1 PIN OF CONNECTOR 1 ON SLIM
@@ -38,8 +48,8 @@ https://github.com/jaxxzer
     // #define GPIO_PIN_RCSIGNAL_RX_SBUS   PA3
     // #define GPIO_PIN_RCSIGNAL_TX_SBUS   PA2  // Turning this off so we can use pin for PWM
     #ifndef DEVICE_NAME
-        // #define DEVICE_NAME "ModalAI M0139"
-        #define DEVICE_NAME "FrSky R9MM"
+        #define DEVICE_NAME "ModalAI M0139"
+        // #define DEVICE_NAME "FrSky R9MM"
     #endif
 #endif
 
@@ -78,14 +88,15 @@ https://github.com/jaxxzer
 // External pads
 #define R9m_Ch1    PB0     // TIM3 CH3
 #define R9m_Ch2    PB1     // TIM3 CH4 
-#define R9m_Ch3    PA8     // TIM1 CH4 
-#define R9m_Ch4    PA11    // TIM1 CH1 
+#define R9m_Ch3    PA8     // TIM1 CH1 
+#define R9m_Ch4    PA11    // TIM1 CH4 
 // #define R9m_Ch3    PA9
 // #define R9m_Ch4    PA10
 // #define R9m_sbus   PA2
 // #define R9m_sport  PA5
 // #define R9m_isport PB11
 
+#define M0139
 //method to set HSE and clock speed correctly//
 // #if defined(HSE_VALUE)
 // /* Redefine the HSE value; it's equal to 8 MHz on the STM32F4-DISCOVERY Kit */
