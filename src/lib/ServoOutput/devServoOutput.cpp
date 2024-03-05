@@ -1,5 +1,3 @@
-// #define PLATFORM_STM32
-// #define FRSKY_R9MM
 #if defined(GPIO_PIN_PWM_OUTPUTS) || defined(PLATFORM_STM32)
 
 #include "devServoOutput.h"
@@ -10,12 +8,12 @@
 #include "rxtx_intf.h"
 #include "logging.h"
 
-#ifdef FRSKY_R9MM
+#if defined(FRSKY_R9MM) || defined(M0139)
 extern bool currentPwmConfig;
 bool servoInitialized;
 static uint8_t SERVO_PINS[GPIO_PIN_PWM_OUTPUTS_COUNT];
 static uint8_t OUTPUT_CHANNELS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {NO_INPUT, NO_INPUT, NO_INPUT, NO_INPUT};
-static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {R9m_Ch1, R9m_Ch2, R9m_Ch3, R9m_Ch4};
+static uint8_t GPIO_PIN_PWM_OUTPUTS[GPIO_PIN_PWM_OUTPUTS_COUNT] = {Ch1, Ch2, Ch3, Ch4};
 #else
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 #endif 
@@ -158,7 +156,7 @@ static void initialize()
         return;
     }
 
-#ifdef FRSKY_R9MM
+#if defined(FRSKY_R9MM) || defined(M0139)
         DBGLN("RX PWM INITIALIZE DEV_SERVO_OUTPUT");
         servoInitialized = false;
         if (!currentPwmConfig){
@@ -194,7 +192,7 @@ static void initialize()
     servoInitialized = true;
 }
 
-#ifdef FRSKY_R9MM
+#if defined(FRSKY_R9MM) || defined(M0139)
 static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8_t outputPin)
 {
     if (!OPT_HAS_SERVO_OUTPUT)
@@ -217,11 +215,11 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
             SERVO_PINS[channel] = servoMgr->PIN_AVAILABLE;
         }
     }
-    // if (inputChannel == NO_INPUT){
-    //     SERVO_PINS[outputChannel] = servoMgr->PIN_AVAILABLE;  
-    // } else{
-    //     SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
-    // }
+    if (inputChannel == 255){
+        SERVO_PINS[outputChannel] = servoMgr->PIN_AVAILABLE;  
+    } else{
+        SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
+    }
 
     delete servoMgr;
 
@@ -235,7 +233,7 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
     servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
     servoMgr->initialize();
 }
-#endif // End FRSKY_R9MM
+#endif // End FRSKY_R9MM || M0139
 
 static uint8_t getOutputChannel(uint8_t inputChannel){
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
@@ -264,7 +262,7 @@ static int event()
         return DURATION_NEVER;
     }
 
-#ifdef FRSKY_R9MM
+#if defined(FRSKY_R9MM) || defined(M0139)
     if (updatePWM && (PWM)pwmCmd == PWM::SET_PWM_VAL){
         uint8_t outputChannel = getOutputChannel(pwmInputChannel);
         if (outputChannel == -1){
@@ -290,7 +288,7 @@ static int event()
         updatePwmChannels(pwmInputChannel, pwmOutputChannel, pwmPin);
     }
 
-#endif // End FRSKY_R9MM
+#endif // End FRSKY_R9MM || M0139
 
     if (servoMgr == nullptr || connectionState == disconnected)
     {

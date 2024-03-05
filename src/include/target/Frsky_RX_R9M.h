@@ -86,10 +86,10 @@ https://github.com/jaxxzer
 
 #define POWER_OUTPUT_FIXED 15 //MAX power for 900 RXes
 // External pads
-#define R9m_Ch1    PB0     // TIM3 CH3
-#define R9m_Ch2    PB1     // TIM3 CH4 
-#define R9m_Ch3    PA8     // TIM1 CH1 
-#define R9m_Ch4    PA11    // TIM1 CH4 
+#define Ch1    PB0     // TIM3 CH3
+#define Ch2    PB1     // TIM3 CH4 
+#define Ch3    PA8     // TIM1 CH1 
+#define Ch4    PA11    // TIM1 CH4 
 // #define R9m_Ch3    PA9
 // #define R9m_Ch4    PA10
 // #define R9m_sbus   PA2

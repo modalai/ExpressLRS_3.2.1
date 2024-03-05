@@ -14,7 +14,9 @@ volatile uint32_t hwTimer::PauseDuration = 0;
 bool hwTimer::running = false;
 bool hwTimer::alreadyInit = false;
 
-#ifdef FRSKY_R9MM
+#ifdef FRSKY_R9MM 
+    HardwareTimer(*hwTimer::MyTim) = new HardwareTimer(TIM3);   // Changed this to TIM3 so we can use TIM1 for PWMs  
+#elif defined(M0139)
     HardwareTimer(*hwTimer::MyTim) = new HardwareTimer(TIM2);   // Changed this to TIM2 so we can use TIM1 and TIM3 for PWMs  
 #elif defined(TIM1)
     HardwareTimer(*hwTimer::MyTim) = new HardwareTimer(TIM1);   

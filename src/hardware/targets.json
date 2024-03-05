@@ -1096,6 +1096,23 @@
             }
         }
     },
+    "modalai": {
+        "name": "ModalAI",
+        "rx_900": {
+            "m0139": {
+                "product_name": "ModalAI M0139 915MHz RX",
+                "upload_methods": ["stlink", "UART"],
+                "platform": "stm32",
+                "firmware": "MODALAI_M0139",
+                "features": ["sbus-uart"],
+                "stlink": {
+                    "cpus": ["STM32F103CBT6"],
+                    "offset": "0x8000",
+                    "bootloader": "r9mm_bootloader.bin"
+                }
+            }
+        }
+    },
     "namimnorc": {
         "name": "NamimnoRC",
         "tx_900": {

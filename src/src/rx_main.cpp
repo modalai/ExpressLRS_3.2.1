@@ -111,7 +111,7 @@ CRSF crsf(CRSF_TX_SERIAL);
     HardwareSerial CrsfRxSerial(USART3);
 #elif defined(TARGET_RX_FM30_MINI)
     #define CRSF_RX_SERIAL CRSF_TX_SERIAL
-#elif defined(FRSKY_R9MM)
+#elif defined(FRSKY_R9MM) || defined (M0139)
     #define CRSF_RX_SERIAL Serial
     // #define CRSF_RX_SERIAL CrsfRxSerial
     // HardwareSerial CrsfRxSerial(GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX); 
@@ -1107,7 +1107,7 @@ static void setupSerial()
     CRSF_RX_SERIAL.begin(firmwareOptions.uart_baud);
 
     CRSF_TX_SERIAL.setTx(GPIO_PIN_RCSIGNAL_TX);
-#elif defined(FRSKY_R9MM)
+#elif defined(FRSKY_R9MM) || defined(M0139)
     CRSF_RX_SERIAL.setRx(GPIO_PIN_RCSIGNAL_RX);
     CRSF_RX_SERIAL.begin(firmwareOptions.uart_baud);
     // debugSerial.begin(firmwareOptions.uart_baud);
@@ -1546,7 +1546,7 @@ void resetConfigAndReboot()
 
 void setup()
 {
-    #ifdef FRSKY_R9MM 
+    #if defined(FRSKY_R9MM) || defined(M0139)
     __enable_irq();
     #endif
 

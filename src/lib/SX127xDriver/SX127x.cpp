@@ -79,7 +79,7 @@ void SX127xDriver::End()
 void SX127xDriver::ConfigLoraDefaults()
 {
   // Setup LoRa chip to use TCXO
-  #ifdef FRSKY_R9MM
+#if defined(M0139)
   DBGLN("Set up TCXO BEGIN");
   uint8_t tcxo = hal.readRegister(SX1276_REG_TCXO);
   DBGLN("SX127X TCXO REG VAL: %u", tcxo);
@@ -87,7 +87,7 @@ void SX127xDriver::ConfigLoraDefaults()
   DBGLN("SX127X TCXO REG VAL (MODIFIED): %u", tcxo);
   hal.writeRegister(SX1276_REG_TCXO, tcxo);
   DBGLN("Set up TCXO END");
-  #endif
+#endif
   DBGLN("RADIO ASLEEP TO SET OPERATION MODE");
   hal.writeRegister(SX127X_REG_OP_MODE, SX127x_OPMODE_SLEEP);
   DBGLN("Setting OP mode: %u (128 == LoRA)", ModFSKorLoRa);
