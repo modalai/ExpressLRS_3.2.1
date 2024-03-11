@@ -33,8 +33,6 @@ fi
 md5sum $BUILD_DIR/$FW_VER
 
 # Copy/Push ELRS FW bin to desired location
-# adb push $BUILD_DIR/$FW_VER /usr/share/modalai/voxl-elrs/esptool/rx/
+# adb push $BUILD_DIR/$FW_VER /usr/share/modalai/voxl-elrs/firmware/rx
 
-# cp $BUILD_DIR/$FW_VER .
-# cp $BUILD_DIR/$FW_VER ../bins/
-# cp $BUILD_DIR/$FW_VER /home/jacob/repos/voxl/voxl-elrs/test_bins
+cp $BUILD_DIR/$FW_VER .
