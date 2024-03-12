@@ -148,15 +148,15 @@ void ServoMgr::initialize()
     for (uint8_t ch = 0; ch < _outputCnt; ++ch)
     {
         const uint8_t pin = _pins[ch];
-        if (pin != PIN_DISCONNECTED){
-            // for (int channel = 0; channel < _outputCnt; ++channel){
-                // if (_pins[channel] == PIN_AVAILABLE){
-            DBGLN("Setting %u LOW", pin);
-            digitalWrite(pin, LOW);
-            // digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
-                // } 
-            // }
-            // continue;
+        if (pin == PIN_AVAILABLE){
+            for (int channel = 0; channel < _outputCnt; ++channel){
+                if (_pins[channel] == PIN_AVAILABLE){
+                DBGLN("Setting %u LOW", GPIO_PIN_PWM_OUTPUTS[channel]);
+                // digitalWrite(pin, LOW);
+                digitalWrite(GPIO_PIN_PWM_OUTPUTS[channel], LOW);
+                    } 
+            }
+            continue;
         } else{
             DBGLN("_pin[ch:%u] UNAVAILABLE: %u", ch, pin);
         }

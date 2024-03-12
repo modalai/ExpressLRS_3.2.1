@@ -174,6 +174,7 @@ static void initialize()
     // Assign each output channel to a output pin
     for (unsigned ch = 0; ch < GPIO_PIN_PWM_OUTPUTS_COUNT; ++ch)
     {
+        const rx_config_pwm_t* ch_temp = config.GetPwmChannel(ch);
         uint8_t pin = GPIO_PIN_PWM_OUTPUTS[ch];
 #if (defined(DEBUG_LOG) || defined(DEBUG_RCVR_LINKSTATS)) && (defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32))
         // Disconnect the debug UART pins if DEBUG_LOG
@@ -182,7 +183,11 @@ static void initialize()
             pin = servoMgr->PIN_DISCONNECTED;
         }
 #endif
-        SERVO_PINS[ch] = pin;
+        if (ch_temp->val.inputChannel == 15) {
+            SERVO_PINS[ch] = servoMgr->PIN_AVAILABLE;
+        }else {
+            SERVO_PINS[ch] = pin;
+        }
         DBGLN("SERVO_PINS[Ch:%u] -> Pin: %u", ch, pin);
     }
 
@@ -199,6 +204,7 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
     {
         return;
     }
+    // DBGLN("Input Ch: %u\tOutput Ch: %u\tOutput Pin: %u", inputChannel, outputChannel, outputPin);
 
     // If new input channel is already being used, reset it so two output channels aren't controlled by one input channel
     for (int channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
@@ -215,9 +221,13 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
             SERVO_PINS[channel] = servoMgr->PIN_AVAILABLE;
         }
     }
-    if (inputChannel == 255){
+    // SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
+    if (inputChannel == servoMgr->PIN_AVAILABLE){
+        // DBGLN("Setting pin available: Input Ch: %u", inputChannel);
         SERVO_PINS[outputChannel] = servoMgr->PIN_AVAILABLE;  
+        OUTPUT_CHANNELS[outputChannel] = servoMgr->PIN_DISCONNECTED;
     } else{
+        // DBGLN("Setting pin output: Input Ch: %u. Output Pin: %u", inputChannel, GPIO_PIN_PWM_OUTPUTS[outputPin]);
         SERVO_PINS[outputChannel] = GPIO_PIN_PWM_OUTPUTS[outputPin];    
     }
 
@@ -225,6 +235,7 @@ static void updatePwmChannels(uint8_t inputChannel, uint8_t outputChannel, uint8
 
     // Set new configuration
     for (uint8_t channel = 0; channel < GPIO_PIN_PWM_OUTPUTS_COUNT; channel++){
+        // DBGLN("Setting PWM Channel: %u to Input Channel: %u", channel, OUTPUT_CHANNELS[channel]);
         config.SetPwmChannel(channel,(uint16_t)0, OUTPUT_CHANNELS[channel], false, som50Hz, false);    
     }
     config.Commit();
