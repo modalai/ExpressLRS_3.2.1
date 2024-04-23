@@ -29,15 +29,15 @@ while getopts "e:t:v:" opt; do
         "e")
             ENCRYPT_KEY=${OPTARG}
             ENCRYPT=1
-            echo "Using encryption"
+            # echo "Using encryption"
             ;;
         "v")
             MODALAI_VERSION=${OPTARG}
-            echo "Using version #: $MODALAI_VERSION"
+            # echo "Using version #: $MODALAI_VERSION"
             ;;
         "t") 
             TARGET=${OPTARG}
-            echo "Building target: $TARGET"
+            # echo "Building target: $TARGET"
             ;;
         *)
             echo "invalid option $arg"
